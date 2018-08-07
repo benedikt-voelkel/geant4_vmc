@@ -10,15 +10,18 @@
 # CMake Configuration file for the VMC examples
 # I. Hrivnacova, 31/01/2014
 
-#---Adding examples subdirectories explicitly 
+#---Adding examples subdirectories explicitly
 #   and a custom target to for building all VMC examples -------------
 
 cmake_minimum_required(VERSION 2.6.4 FATAL_ERROR)
 
-set(CMAKE_MODULE_PATH 
+# first unset VMC_CONCURRENT to keep it tidy for the first examples
+set(VMC_CONCURRENT)
+
+set(CMAKE_MODULE_PATH
     ${Geant4VMC_DIR}/Modules
     ${Geant3_DIR}/Modules
-    ${CMAKE_MODULE_PATH}) 
+    ${CMAKE_MODULE_PATH})
 
 
 add_subdirectory(E01)
@@ -28,6 +31,8 @@ add_subdirectory(E06)
 add_subdirectory(A01)
 add_subdirectory(Gflash)
 add_subdirectory(TR)
+add_subdirectory(ConcurrentEngines)
+
 
 #----------------------------------------------------------------------------
 # Garfield example requires Garfield
