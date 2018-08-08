@@ -42,14 +42,13 @@ int main(int argc, char** argv)
 
   // Create MC application
   CEMCApplication* appl
-    =  new CEMCApplication("ExampleE01",
+    =  new CEMCApplication("ExampleCE",
                              "The exampleE01 MC application");
 
    // External geometry construction
-   std::cout << "[INFO] Construct Geometry" << std::endl;
-   appl->ConstructGeometry();
-   /*
-   std::cout << "[INFO] Construct Geometry" << std::endl;
+   std::cout << "[INFO] Construct the user Geometry" << std::endl;
+   appl->ConstructUserGeometry();
+   appl->SetTransportMediaProperties();
 
 
 
@@ -81,8 +80,9 @@ int main(int argc, char** argv)
   std::cout << mc->GetName() << std::endl;
   std::cout << "[INFO] VMC" << mc->GetName() << " was set up" << std::endl;
 
-  //appl->InitMC("");
-  //appl->RunMC(1);
-  */
+
+  appl->InitMCs();
+  appl->RunMCs(1);
+
   delete appl;
 }

@@ -38,7 +38,6 @@ ClassImp(CEMCApplication)
 //_____________________________________________________________________________
 CEMCApplication::CEMCApplication(const char *name, const char *title)
   : TVirtualMCApplication(name,title),
-    fStack(0),
     fMagField(0),
     fImedAr(0),
     fImedAl(0),
@@ -48,9 +47,6 @@ CEMCApplication::CEMCApplication(const char *name, const char *title)
 /// \param name   The MC application name
 /// \param title  The MC application description
 
-  // create a user stack
-  fStack = new CEMCStack(100);
-
   // create magnetic field (with zero value)
   fMagField = new TGeoUniformMagField();
 }
@@ -58,7 +54,6 @@ CEMCApplication::CEMCApplication(const char *name, const char *title)
 //_____________________________________________________________________________
 CEMCApplication::CEMCApplication()
   : TVirtualMCApplication(),
-    fStack(0),
     fMagField(0),
     fImedAr(0),
     fImedAl(0),
@@ -71,8 +66,9 @@ CEMCApplication::CEMCApplication()
 CEMCApplication::~CEMCApplication()
 {
 /// Destructor
-
-  delete fStack;
+  for(auto& stack : fStacks) {
+    delete stack;
+  }
   delete fMagField;
 }
 
@@ -212,9 +208,6 @@ void CEMCApplication::ConstructVolumes()
     gGeoManager->Node("LAYB", i ,"CALB", posX, posY, posZ, 0, kTRUE, ubuf);
   }
 
-  // close geometry
-  gGeoManager->CloseGeometry();
-
 }
 
 //
@@ -222,34 +215,35 @@ void CEMCApplication::ConstructVolumes()
 //
 
 //_____________________________________________________________________________
-void CEMCApplication::InitMC(const char* setup)
+void CEMCApplication::InitMCs()
 {
 /// Initialize MC.
 /// The selection of the concrete MC is done in the macro.
 /// \param setup The name of the configuration macro
 
-  if ( TString(setup) != "" ) {
-    gROOT->LoadMacro(setup);
-    gInterpreter->ProcessLine("Config()");
-    if ( ! gMC ) {
-      Fatal("InitMC",
-            "Processing Config() has failed. (No MC is instantiated.)");
-    }
+  for(TVirtualMC* mc : fMCEngines) {
+    mc->SetRootGeometry();
+    // create a user stack
+    CEMCStack* stack = new CEMCStack(100);
+    fStacks.push_back(stack);
+    fCurrentMCEngine = mc;
+    mc->SetStack(stack);
+    mc->SetMagField(fMagField);
+    mc->Init();
+    mc->BuildPhysics();
   }
-
-  gMC->SetStack(fStack);
-  gMC->SetMagField(fMagField);
-  gMC->Init();
-  gMC->BuildPhysics();
 }
 
 //__________________________________________________________________________
-void CEMCApplication::RunMC(Int_t nofEvents)
+void CEMCApplication::RunMCs(Int_t nofEvents)
 {
 /// Run MC.
 /// \param nofEvents Number of events to be processed
-
-  gMC->ProcessRun(nofEvents);
+  for(TVirtualMC* mc : fMCEngines) {
+    fCurrentMCEngine = mc;
+    cout << "[INFO] Starting run for engine " << fCurrentMCEngine->GetName() << endl;
+    mc->ProcessRun(nofEvents);
+  }
   FinishRun();
 }
 
@@ -278,7 +272,7 @@ void CEMCApplication::ConstructGeometry()
 /// Construct geometry using TGeo functions or
 /// TVirtualMC functions (if oldGeometry is selected)
 
-  cout << "Geometry will be defined via TGeo" << endl;
+  cout << "[INFO] ConstructGeometry for all engines" << endl;
   ConstructMaterials();
   ConstructVolumes();
 }
@@ -287,10 +281,7 @@ void CEMCApplication::ConstructGeometry()
 void CEMCApplication::InitGeometry()
 {
 /// Initialize geometry.
-
-  fImedAr = gMC->MediumId("ArgonGas");
-  fImedAl = gMC->MediumId("Aluminium");
-  fImedPb = gMC->MediumId("Lead");
+  cout << "[INFO] Init geometry for engine " << fCurrentMCEngine->GetName() << endl;
 }
 
 //_____________________________________________________________________________
@@ -325,23 +316,25 @@ void CEMCApplication::GeneratePrimaries()
  pz = 0.;
  e  = 1.;
 
- // Add particle to stack
- fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
-                  kPPrimary, ntr, 1., 0);
+ for(TVirtualMCStack* stack : fStacks) {
+   // Add particle to stack
+   stack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
+                    kPPrimary, ntr, 1., 0);
 
- // Change direction and add particle to stack
- px = 1.;
- py = 0.1;
- pz = 0.;
- fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
-                  kPPrimary, ntr, 1., 0);
+   // Change direction and add particle to stack
+   px = 1.;
+   py = 0.1;
+   pz = 0.;
+   stack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
+                    kPPrimary, ntr, 1., 0);
 
- // Change direction and add particle to stack
- px = 1.;
- py = 0.;
- pz = 0.1;
- fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
-                  kPPrimary, ntr, 1., 0);
+   // Change direction and add particle to stack
+   px = 1.;
+   py = 0.;
+   pz = 0.1;
+   stack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
+                    kPPrimary, ntr, 1., 0);
+  }
 }
 
 //_____________________________________________________________________________
@@ -375,16 +368,16 @@ void CEMCApplication::Stepping()
 /// Print track position, the current volume and current medium names.
 
   TLorentzVector position;
-  gMC->TrackPosition(position);
+  fCurrentMCEngine->TrackPosition(position);
 
   cout << "Track "
        << position.X() << " " << position.Y() << " " << position.Z()
-       << "  in " <<  gMC->CurrentVolName() << "  ";
+       << "  in " <<  fCurrentMCEngine->CurrentVolName() << "  ";
 
-  if (gMC->CurrentMedium() == fImedAr) cout <<  "ArgonGas";
-  if (gMC->CurrentMedium() == fImedAl) cout <<  "Aluminium";
-  if (gMC->CurrentMedium() == fImedPb) cout <<  "Lead";
-
+  cout << "[INFO] Stepping in engine " << fCurrentMCEngine->GetName() << endl;
+  if (fCurrentMCEngine->CurrentMedium() == fImedAr) cout << "MediumID: " << fImedAr <<  " ArgonGas";
+  if (fCurrentMCEngine->CurrentMedium() == fImedAl) cout << "MediumID: " << fImedAl <<  " Aluminium";
+  if (fCurrentMCEngine->CurrentMedium() == fImedPb) cout << "MediumID: " << fImedPb <<  " Lead";
   cout << endl;
 
 

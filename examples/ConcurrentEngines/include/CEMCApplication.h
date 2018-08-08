@@ -39,8 +39,8 @@ class CEMCApplication : public TVirtualMCApplication
     static CEMCApplication* Instance();
 
     // methods
-    void InitMC(const char *setup);
-    void RunMC(Int_t nofEvents);
+    void InitMCs();
+    void RunMCs(Int_t nofEvents);
     void FinishRun();
 
     virtual TVirtualMCApplication* CloneForWorker() const;
@@ -67,7 +67,7 @@ class CEMCApplication : public TVirtualMCApplication
     void ConstructVolumes();
 
     // data members
-    TVirtualMCStack*  fStack;       ///< The VMC stack
+    std::vector<TVirtualMCStack*> fStacks; ///
     TVirtualMagField* fMagField;    ///< The magnetic field
     Int_t             fImedAr;      ///< The Argon gas medium Id
     Int_t             fImedAl;      ///< The Aluminium medium Id
