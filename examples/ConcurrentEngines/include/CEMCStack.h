@@ -56,6 +56,7 @@ class CEMCStack : public TVirtualMCStack
     virtual Int_t  GetCurrentTrackNumber() const;
     virtual Int_t  GetCurrentParentTrackNumber() const;
 
+
   private:
     // methods
     CEParticle* GetParticle(Int_t id) const;

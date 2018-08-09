@@ -51,7 +51,6 @@ int main(int argc, char** argv)
    appl->SetTransportMediaProperties();
 
 
-
   std::cout << "[INFO] Setup Geant4 VMC" << std::endl;
 
   // RunConfiguration for Geant4
@@ -78,11 +77,14 @@ int main(int argc, char** argv)
 
   mc = TVirtualMCApplication::GetMC();
   std::cout << mc->GetName() << std::endl;
-  std::cout << "[INFO] VMC" << mc->GetName() << " was set up" << std::endl;
+  std::cout << "[INFO] VMC " << mc->GetName() << " was set up" << std::endl;
 
 
   appl->InitMCs();
   appl->RunMCs(1);
+  appl->PrintSummary();
+  // Export Geometry
+  appl->ExportGeometry();
 
   delete appl;
 }
