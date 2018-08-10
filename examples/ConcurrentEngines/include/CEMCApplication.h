@@ -46,6 +46,9 @@ class CEMCApplication : public TVirtualMCApplication
     void ExportGeometry(const char* path = ".") const;
     // Print a summary of the run status.
     void PrintSummary() const;
+    // Set the engine resposnsible for primaries from event generation
+    void SetPrimaryMCEngine(TVirtualMC* mc);
+    void SetPrimaryMCEngine(const char* mcName);
 
     virtual TVirtualMCApplication* CloneForWorker() const;
     virtual void InitForWorker() const;

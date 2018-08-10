@@ -156,8 +156,9 @@ TParticle* CEMCStack::PopPrimaryForTracking(Int_t i)
 /// \return   The popped primary particle object
 /// \param i  The index of primary particle to be popped
 
+  Info("PopPrimaryForTracking", "Trying to pop primary %i from stack where there are %i primaries in total", i, fNPrimary);
   if (i < 0 || i >= fNPrimary)
-    Fatal("GetPrimaryForTracking", "Index out of range");
+    Fatal("PopPrimaryForTracking", "Index out of range");
 
   return ((CEParticle*)fParticles->At(i))->GetParticle();
 }

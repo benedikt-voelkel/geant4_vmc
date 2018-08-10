@@ -81,6 +81,10 @@ int main(int argc, char** argv)
 
 
   appl->InitMCs();
+  appl->SetPrimaryMCEngine(geant3);
+
+
+
   appl->RunMCs(1);
   appl->PrintSummary();
   // Export Geometry

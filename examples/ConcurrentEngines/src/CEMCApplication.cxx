@@ -30,6 +30,8 @@
 #include <TThread.h>
 #include <TError.h>
 
+#include "TParticle.h"
+
 using namespace std;
 
 /// \cond CLASSIMP
@@ -482,13 +484,32 @@ void CEMCApplication::Stepping()
     }
     // Get current track and associated particle
     TVirtualMCStack* currentStack = fCurrentMCEngine->GetStack();
-    TParticle* particle = currentStack->GetCurrentTrack();
     // Track ID (filled by stack)
     Int_t ntr;
     // Move that track to future stack
-    futureStack->PushTrack(1, -1, particle, 0., kPTransportation, ntr, 0);
+    Double_t currPosX;
+    Double_t currPosY;
+    Double_t currPosZ;
+    Double_t currMomX;
+    Double_t currMomY;
+    Double_t currMomZ;
+    Double_t currE;
+    Int_t currPDG = fCurrentMCEngine->TrackPid();
+    Double_t currTof = fCurrentMCEngine->TrackTime();
+    // \note \todo These are the initial polarisations
+    TParticle* particle = currentStack->GetCurrentTrack();
+    TVector3 v;
+    particle->GetPolarisation(v);
+    fCurrentMCEngine->TrackPosition(currPosX, currPosY, currPosZ);
+    fCurrentMCEngine->TrackMomentum(currMomX, currMomY, currMomZ, currE);
+    futureStack->PushTrack(1, -1, currPDG, currMomX, currMomY, currMomZ, currE,
+                           currPosX, currPosY, currPosZ, 0., v.X(), v.Y(), v.Z(),
+                           kPTransportation, ntr, 1., 0);
     fNMovedTracks++;
     Info("Stepping", "Track exits tracker, move track from TGeant4 stack to TGeant3TGeo stack");
+    cout << "Some track properties:\n";
+    cout << "x, y, z = " << currPosX << ", " << currPosY << ", " << currPosZ << "\n";
+    cout << "E, p_x, p_y, p_z = " << currE << ", " << currMomX << ", " << currMomY << ", " << currMomZ << endl;
     // Finally stop the track at the current engine
     fCurrentMCEngine->StopTrack();
   }
@@ -530,4 +551,22 @@ void CEMCApplication::PrintSummary() const
   cout << "# secondaries produced during TGeant4 transport: " << fNSecondariesG4 << "\n";
   cout << "# secondaries produced during TGeant3TGeo transport: " << fNSecondariesG4 << "\n";
   cout << "# explicit primary generation: " << fNGeneratePrimaries << "\n";
+}
+
+//_____________________________________________________________________________
+void CEMCApplication::SetPrimaryMCEngine(TVirtualMC* mc)
+{
+  SetPrimaryMCEngine(mc->GetName());
+}
+
+//_____________________________________________________________________________
+void CEMCApplication::SetPrimaryMCEngine(const char* mcName)
+{
+  for(TVirtualMC* mc : fMCEngines) {
+    if(strcmp(mc->GetName(), mcName) == 0) {
+      //fPrimaryMCEngine = mc;
+      return;
+    }
+  }
+  Fatal("SetPrimaryMCEngine", "Engine %s not found.", mcName);
 }
