@@ -23,24 +23,24 @@ set(CMAKE_MODULE_PATH
     ${Geant3_DIR}/Modules
     ${CMAKE_MODULE_PATH})
 
-
-add_subdirectory(E01)
-add_subdirectory(E02)
-add_subdirectory(E03)
-add_subdirectory(E06)
-add_subdirectory(A01)
-add_subdirectory(Gflash)
-add_subdirectory(TR)
+# Disabled examples except for ConcurrentEngines since they do not work with new developments yet
+#add_subdirectory(E01)
+#add_subdirectory(E02)
+#add_subdirectory(E03)
+#add_subdirectory(E06)
+#add_subdirectory(A01)
+#add_subdirectory(Gflash)
+#add_subdirectory(TR)
 add_subdirectory(ConcurrentEngines)
 
 
 #----------------------------------------------------------------------------
 # Garfield example requires Garfield
 #
-find_package(Garfield QUIET)
-if(Garfield_FOUND)
-  add_subdirectory(ExGarfield)
-else()
-  message(STATUS "VMC Examples: Garfield package not found. ")
-  message(STATUS "ExGarfield example disabled")
-endif()
+#find_package(Garfield QUIET)
+#if(Garfield_FOUND)
+  #add_subdirectory(ExGarfield)
+#else()
+  #message(STATUS "VMC Examples: Garfield package not found. ")
+  #message(STATUS "ExGarfield example disabled")
+#endif()

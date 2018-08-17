@@ -9,6 +9,15 @@ It also includes G4Root and MTRoot packages, which are independent from Geant4 V
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](http://www.gnu.org/licenses/gpl-2.0)
 
+## [WIP] Running MC engines concurrently
+In order to install this version `multi-engines` of `geant4_vmc` you first need the appropriate `ROOT` and `GEANT3` packages at
+* `ROOT`: https://github.com/benedikt-voelkel/root/tree/v6-12-06-multi-engines
+* `GEANT3`: https://github.com/benedikt-voelkel/geant3/tree/multi-engines
+### Setup using `alibuild` and `alidist`
+To automatically setup everything with all dependencies oen can use [alibuild](https://github.com/alisw/alibuild) with the respective build recipes provided by [this alidist fork](https://github.com/benedikt-voelkel/alidist) @concurrentEngines branch. Just run
+```bash
+aliBuild build concurrent-engines --defaults concurrent-engines
+```
 
 ## Files and directories
 

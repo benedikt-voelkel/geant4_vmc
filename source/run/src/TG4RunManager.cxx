@@ -90,7 +90,8 @@ TG4RunManager::TG4RunManager(TG4RunConfiguration* runConfiguration,
     fARGC(argc),
     fARGV(argv),
     fUseRootRandom(true),
-    fIsMCStackCached(false)
+    fIsMCStackCached(false),
+    fHasRunInitializationOneEvent(false)
 {
 /// Standard constructor
 
@@ -458,8 +459,8 @@ void TG4RunManager::CacheMCStack()
   if ( fIsMCStackCached ) return;
 
   // The VMC stack must be set to MC at this stage !!
-  TVirtualMCStack* mcStack = gMC->GetStack();
-  if ( ! mcStack ) {
+  TMCQueue* mcQueue = gMC->GetQueue();
+  if ( ! mcQueue ) {
     TG4Globals::Exception("TG4RunManager", "CacheMCStack",
      "VMC stack is not set");
     return;
@@ -468,12 +469,12 @@ void TG4RunManager::CacheMCStack()
   // Set stack to the event actions if they exists
   // (on worker only if in MT mode)
   if ( GetEventAction() ) {
-    GetEventAction()->SetMCStack(mcStack);
-    TG4TrackingAction::Instance()->SetMCStack(mcStack);
-    TG4TrackManager::Instance()->SetMCStack(mcStack);
+    GetEventAction()->SetMCStack(mcQueue);
+    TG4TrackingAction::Instance()->SetMCStack(mcQueue);
+    TG4TrackManager::Instance()->SetMCStack(mcQueue);
 
     if ( TG4StackPopper::Instance() ) {
-      TG4StackPopper::Instance()->SetMCStack(mcStack);
+      TG4StackPopper::Instance()->SetMCStack(mcQueue);
     }
   }
 
@@ -481,18 +482,38 @@ void TG4RunManager::CacheMCStack()
 }
 
 //_____________________________________________________________________________
-void TG4RunManager::ProcessEvent()
+void TG4RunManager::ProcessEvent(G4int eventId)
 {
 /// Not yet implemented.
 
   TG4Globals::Warning(
     "TG4RunManager", "ProcessEvent", "Not implemented.");
+  // Replay what is done in GEANT4 BeamOn
+  if(!fHasRunInitializationOneEvent) {
+    G4bool cond = fRunManager->ConfirmBeamOnCondition();
+    if(!cond) {
+      TG4Globals::Warning(
+        "TG4RunManager", "ProcessEvent", "Bad beam condition in G4RunManager. No event processed.");
+      return;
+    }
+    fRunManager->ConstructScoringWorlds();
+    fRunManager->RunInitialization();
+    fHasRunInitializationOneEvent = true;
+  }
+  fRunManager->ProcessOneEvent(eventId);
+  fRunManager->TerminateOneEvent();
 }
 
 //_____________________________________________________________________________
 Bool_t TG4RunManager::ProcessRun(G4int nofEvents)
 {
 /// Process Geant4 run.
+
+  // Check whther a run with single events has been started before and terminate that
+  if(fHasRunInitializationOneEvent) {
+    fRunManager->RunTermination();
+    fHasRunInitializationOneEvent = false;
+  }
 
   fRunManager->BeamOn(nofEvents);
 
@@ -502,9 +523,20 @@ Bool_t TG4RunManager::ProcessRun(G4int nofEvents)
   G4bool result = ! TG4SDServices::Instance()->GetIsStopRun();
   TG4SDServices::Instance()->SetIsStopRun(false);
 
+  // Set flag to false which is used so far to control single event run in ProcessEvent
+  fHasRunInitializationOneEvent = false;
   return result;
 }
 
+//_____________________________________________________________________________
+void TG4RunManager::TerminateRun()
+{
+  // Check whether that has been set before
+  if(fHasRunInitializationOneEvent) {
+    fRunManager->RunTermination();
+    fHasRunInitializationOneEvent = false;
+  }
+}
 //_____________________________________________________________________________
 void TG4RunManager::CreateGeantUI()
 {

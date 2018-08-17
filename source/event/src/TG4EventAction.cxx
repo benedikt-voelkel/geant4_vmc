@@ -8,7 +8,7 @@
 //-------------------------------------------------
 
 /// \file TG4EventAction.cxx
-/// \brief Implementation of the TG4EventAction class 
+/// \brief Implementation of the TG4EventAction class
 ///
 /// \author I. Hrivnacova; IPN, Orsay
 
@@ -27,8 +27,9 @@
 #include <Randomize.hh>
 
 #include <TVirtualMC.h>
-#include <TVirtualMCStack.h>
+#include <TMCQueue.h>
 #include <TVirtualMCApplication.h>
+#include <TMCStackManager.h>
 #include <TSystem.h>
 
 #include <math.h>
@@ -39,7 +40,7 @@ TG4EventAction::TG4EventAction()
     fMessenger(this),
     fTimer(),
     fMCApplication(0),
-    fMCStack(0),
+    fMCQueue(0),
     fTrackingAction(0),
     fTrackManager(0),
     fStateManager(0),
@@ -50,7 +51,7 @@ TG4EventAction::TG4EventAction()
 }
 
 //_____________________________________________________________________________
-TG4EventAction::~TG4EventAction() 
+TG4EventAction::~TG4EventAction()
 {
 /// Destructor
 }
@@ -77,35 +78,35 @@ void TG4EventAction::BeginOfEventAction(const G4Event* event)
 
   // reset the tracks counters
   fTrackingAction->PrepareNewEvent();
-    
+
   // fill primary particles in VMC stack if stack is empty
-  if ( fMCStack->GetNtrack() == 0 ) {
+  if ( fMCQueue->GetNtrack() == 0 ) {
     if (VerboseLevel() > 0)
       G4cout << "Filling VMC stack with primaries" << G4endl;
-    
+
     for (G4int iv=0; iv<event->GetNumberOfPrimaryVertex(); iv++) {
       G4PrimaryVertex* vertex = event->GetPrimaryVertex(iv);
-      
+
       for (G4int ip=0; ip<vertex->GetNumberOfParticle(); ip++) {
         G4PrimaryParticle* particle = vertex->GetPrimary(ip);
         fTrackManager->PrimaryToStack(vertex, particle);
-      }        
+      }
     }
-  } 
-  
+  }
+
   // save the event random number status per event
   if ( fSaveRandomStatus) {
     G4UImanager::GetUIpointer()->ApplyCommand("/random/saveThisEvent");
     if (VerboseLevel() > 0)
-      G4cout << "Saving random status: " << G4endl;  
+      G4cout << "Saving random status: " << G4endl;
       CLHEP::HepRandom::showEngineStatus();
-      G4cout << G4endl;  
-  }    
+      G4cout << G4endl;
+  }
 
   if (VerboseLevel() > 0) {
     G4cout << ">>> Event " << event->GetEventID() << G4endl;
     fTimer.Start();
-  }  
+  }
 }
 
 //_____________________________________________________________________________
@@ -122,18 +123,18 @@ void TG4EventAction::EndOfEventAction(const G4Event* event)
   }
 
   if (VerboseLevel() > 2) {
-    G4int nofPrimaryTracks = fMCStack->GetNprimary();
-    G4int nofSavedTracks = fMCStack->GetNtrack();
-   
-    G4cout  << "    " << nofPrimaryTracks << 
+    G4int nofPrimaryTracks = TMCStackManager::Instance()->GetNprimary();
+    G4int nofSavedTracks = TMCStackManager::Instance()->GetNtrack();
+
+    G4cout  << "    " << nofPrimaryTracks <<
                " primary tracks processed." << G4endl;
-    G4cout  << "    " << nofSavedTracks << 
+    G4cout  << "    " << nofSavedTracks <<
                " tracks saved." << G4endl;
 
     G4int nofAllTracks = fTrackManager->GetNofTracks();
-    G4cout  << "    " << nofAllTracks << 
+    G4cout  << "    " << nofAllTracks <<
                   " all tracks processed." << G4endl;
-  }               
+  }
 
   // VMC application finish event
   fMCApplication->FinishEvent();
@@ -143,12 +144,12 @@ void TG4EventAction::EndOfEventAction(const G4Event* event)
     // print time
     fTimer.Stop();
     fTimer.Print();
-  }  
+  }
 
   if ( fPrintMemory ) {
     ProcInfo_t procInfo;
     gSystem->GetProcInfo(&procInfo);
-    G4cout << "Current memory usage: resident " 
+    G4cout << "Current memory usage: resident "
            << procInfo.fMemResident << ", virtual " << procInfo.fMemVirtual << G4endl;
-  }         
+  }
 }

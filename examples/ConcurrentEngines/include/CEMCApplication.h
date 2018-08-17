@@ -21,6 +21,8 @@
 #include <TVirtualMCStack.h>
 
 class TVirtualMagField;
+class TMCStackManager;
+class TVirtualMC;
 
 /// \ingroup ConcurrentEngines
 /// \brief Implementation of the TVirtualMCApplication
@@ -41,14 +43,16 @@ class CEMCApplication : public TVirtualMCApplication
     // methods
     void InitMCs();
     void RunMCs(Int_t nofEvents);
-    void FinishRun();
+    // Now used for cleaning up (especially TGeant4) after running single events
+    void TerminateRun();
     // Export the geometry for further inspection
     void ExportGeometry(const char* path = ".") const;
     // Print a summary of the run status.
-    void PrintSummary() const;
-    // Set the engine resposnsible for primaries from event generation
-    void SetPrimaryMCEngine(TVirtualMC* mc);
-    void SetPrimaryMCEngine(const char* mcName);
+    void PrintStatus() const;
+    // Populate the master stack
+    void GeneratePrimariesMaster();
+    // Initialise stacks by passing primaries from master stack to respective engine stacks
+    void InitializeStacks();
 
     virtual TVirtualMCApplication* CloneForWorker() const;
     virtual void InitForWorker() const;
@@ -58,7 +62,7 @@ class CEMCApplication : public TVirtualMCApplication
     virtual void BeginEvent();
     virtual void BeginPrimary();
     virtual void PreTrack();
-    virtual void Stepping();
+    virtual void UserStepping();
     virtual void PostTrack();
     virtual void FinishPrimary();
     virtual void FinishEvent();
@@ -72,26 +76,31 @@ class CEMCApplication : public TVirtualMCApplication
     // methods
     void ConstructMaterials();
     void ConstructVolumes();
-    // Temporary helper method to get engine by name
-    TVirtualMC* GetMC(const char* name);
+    // Initialize SelectionCriteria ==> extracting volume ids
+    void InitializeSelectionCriteria();
 
     // data members
-    std::vector<TVirtualMCStack*> fStacks;      ///< One stack per engine
-    TVirtualMagField* fMagField;                ///< The magnetic field
-    Int_t             fImedAr;                  ///< The Argon gas medium Id
-    Int_t             fImedAl;                  ///< The Aluminium medium Id
-    Int_t             fImedPb;                  ///< The Lead medium Id
-    Int_t             fPreviousMed;             ///< The medium of the previous step
-    Int_t             fTopID;                   ///< ID of top volume
-    Int_t             fTrackerTubeID;           ///< volume ID fo the tracker tube
-    Int_t             fNEventsProcessed;        ///< Number of processed events
-    Int_t             fStackSize;               ///< Size of the stack
-    Int_t             fNMovedTracks;            ///< Number of tracks moved from TGeant4 stack to TGeant3TGeo stack
-    Int_t             fNTracksG3;               ///< Number of tracks processed by TGeant3TGeo
-    Int_t             fNTracksG4;               ///< Number of tracks processed by TGeant4
-    Int_t             fNSecondariesG3;          ///< Number of secondaries produced in TGeant3TGeo transport
-    Int_t             fNSecondariesG4;          ///< Number of secondaries produced in TGeant4 transport
-    Int_t             fNGeneratePrimaries;      ///< Monitor number of primary generation
+    TVirtualMC*       fCurrentMCEngine;          ///< Pointer to current MC engine
+    TVirtualMagField* fMagField;                 ///< The magnetic field
+    TMCStackManager*  fMCStackManager;           ///< Store pointer to global TMCStackManager
+    Int_t             fImedAr;                   ///< The Argon gas medium Id
+    Int_t             fImedAl;                   ///< The Aluminium medium Id
+    Int_t             fImedPb;                   ///< The Lead medium Id
+    Int_t             fPreviousMed;              ///< The medium of the previous step
+    Int_t             fTopID;                    ///< ID of top volume
+    Int_t             fTrackerTubeID;            ///< volume ID fo the tracker tube
+    Int_t             fNEventsProcessed;         ///< Number of processed events
+    Int_t             fCurrTrackId;              ///< Id of track currently processed
+    Int_t             fStackSize;                ///< Size of the stack
+    Int_t             fNMovedTracks;             ///< Number of tracks moved from TGeant4 stack to TGeant3TGeo stack
+    Int_t             fNTracksG3;                ///< Number of tracks processed by TGeant3TGeo
+    Int_t             fNTracksG4;                ///< Number of tracks processed by TGeant4
+    Int_t             fNSecondariesG3;           ///< Number of secondaries produced in TGeant3TGeo transport
+    Int_t             fNSecondariesG4;           ///< Number of secondaries produced in TGeant4 transport
+    Int_t             fNGeneratePrimaries;       ///< Monitor number of primary generation
+    Bool_t            fDryRun;                   ///< Having a dryrun
+    Bool_t            fChooseEngineForTopVolume; ///< false: Just keep the current engine, true: change engine
+    // /TVirtualMC*       fCurrentMCEngine
 
 
   ClassDef(CEMCApplication,1)  //Interface to MonteCarlo application

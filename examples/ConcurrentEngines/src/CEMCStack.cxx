@@ -173,6 +173,14 @@ void  CEMCStack::SetCurrentTrack(Int_t itrack)
 }
 
 //_____________________________________________________________________________
+Int_t  CEMCStack::GetNtrackToDo() const
+{
+/// \return  The total number of all tracks.
+
+  return fStack.size();
+}
+
+//_____________________________________________________________________________
 Int_t  CEMCStack::GetNtrack() const
 {
 /// \return  The total number of all tracks.

@@ -11,7 +11,7 @@
 //-------------------------------------------------
 
 /// \file TG4PrimaryGeneratorAction.h
-/// \brief Definition of the TG4PrimaryGeneratorAction class 
+/// \brief Definition of the TG4PrimaryGeneratorAction class
 ///
 /// \author I. Hrivnacova; IPN Orsay
 
@@ -23,7 +23,7 @@
 class G4Event;
 
 /// \ingroup run
-/// \brief Primary generator action defined via TVirtualMCStack 
+/// \brief Primary generator action defined via TMCQueue 
 /// and TVirtualMCApplication.
 ///
 /// \author I. Hrivnacova; IPN, Orsay
@@ -37,12 +37,10 @@ class TG4PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction,
 
     // methods
     virtual void GeneratePrimaries(G4Event* event);
-    
+
   private:
     // methods
     void TransformPrimaries(G4Event* event);
 };
 
 #endif //TG4_PRIMARY_GENERATOR_ACTION_H
-
-

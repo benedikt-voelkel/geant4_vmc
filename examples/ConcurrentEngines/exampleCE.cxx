@@ -67,6 +67,8 @@ int main(int argc, char** argv)
   // geant4->ProcessGeantMacro("g4config.in");
   geant4->ProcessGeantCommand("/mcVerbose/all 1");
   TVirtualMC* mc = TVirtualMCApplication::GetMC();
+  TMCSelectionCriteria* crit = TVirtualMCApplication::GetSelectionCriteria();
+  crit->AddVolume("TRTU");
   std::cout << "[INFO] VMC" << mc->GetName() << " was set up" << std::endl;
 
 
@@ -80,13 +82,14 @@ int main(int argc, char** argv)
   std::cout << "[INFO] VMC " << mc->GetName() << " was set up" << std::endl;
 
 
+
+  appl->
+
   appl->InitMCs();
   appl->SetPrimaryMCEngine(geant3);
 
-
-
   appl->RunMCs(1);
-  appl->PrintSummary();
+  appl->PrintStatus();
   // Export Geometry
   appl->ExportGeometry();
 

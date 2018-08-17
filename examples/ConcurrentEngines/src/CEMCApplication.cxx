@@ -18,15 +18,19 @@
 #include "CEMCApplication.h"
 #include "CEMCStack.h"
 
+#include <TMCManager.h>
+#include <TVirtualMC.h>
 #include <TROOT.h>
 #include <Riostream.h>
 #include <TInterpreter.h>
 #include <TVirtualMC.h>
+#include <TMCStackManager.h>
 #include <TLorentzVector.h>
 #include <TArrayD.h>
 #include <TGeoManager.h>
 #include <TGeoMatrix.h>
 #include <TGeoMaterial.h>
+#include <TVirtualGeoTrack.h>
 #include <TThread.h>
 #include <TError.h>
 
@@ -41,7 +45,9 @@ ClassImp(CEMCApplication)
 //_____________________________________________________________________________
 CEMCApplication::CEMCApplication(const char *name, const char *title)
   : TVirtualMCApplication(name,title),
+    fCurrentMCEngine(nullptr),
     fMagField(0),
+    fMCStackManager(TMCStackManager::Instance()),
     fImedAr(0),
     fImedAl(0),
     fImedPb(0),
@@ -49,13 +55,16 @@ CEMCApplication::CEMCApplication(const char *name, const char *title)
     fTopID(-1),
     fTrackerTubeID(-1),
     fNEventsProcessed(0),
+    fCurrTrackId(0),
     fStackSize(100),
     fNMovedTracks(0),
     fNTracksG3(0),
     fNTracksG4(0),
     fNSecondariesG3(0),
     fNSecondariesG4(0),
-    fNGeneratePrimaries(0)
+    fNGeneratePrimaries(0),
+    fDryRun(kFALSE),
+    fChooseEngineForTopVolume(kFALSE)
 
 {
 /// Standard constructor
@@ -64,12 +73,16 @@ CEMCApplication::CEMCApplication(const char *name, const char *title)
 
   // create magnetic field (with zero value)
   fMagField = new TGeoUniformMagField();
+  fMCStackManager->RegisterStack(new CEMCStack(fStackSize));
+  fMCManager->ConnectToCurrentMC(fCurrentMCEngine);
 }
 
 //_____________________________________________________________________________
 CEMCApplication::CEMCApplication()
   : TVirtualMCApplication(),
+    fCurrentMCEngine(nullptr),
     fMagField(0),
+    fMCStackManager(TMCStackManager::Instance()),
     fImedAr(0),
     fImedAl(0),
     fImedPb(0),
@@ -77,14 +90,16 @@ CEMCApplication::CEMCApplication()
     fTopID(-1),
     fTrackerTubeID(-1),
     fNEventsProcessed(0),
+    fCurrTrackId(0),
     fStackSize(100),
     fNMovedTracks(0),
     fNTracksG3(0),
     fNTracksG4(0),
     fNSecondariesG3(0),
     fNSecondariesG4(0),
-    fNGeneratePrimaries(0)
-
+    fNGeneratePrimaries(0),
+    fDryRun(kFALSE),
+    fChooseEngineForTopVolume(kFALSE)
 {
 /// Default constructor
 }
@@ -93,25 +108,12 @@ CEMCApplication::CEMCApplication()
 CEMCApplication::~CEMCApplication()
 {
 /// Destructor
-  for(auto& stack : fStacks) {
-    delete stack;
-  }
   delete fMagField;
 }
 
 //
 // private methods
 //
-
-TVirtualMC* CEMCApplication::GetMC(const char* name)
-{
-  for(TVirtualMC* mc : fMCEngines) {
-    if(strcmp(mc->GetName(), name) == 0) {
-      return mc;
-    }
-  }
-  return nullptr;
-}
 
 void CEMCApplication::SetMCMediaProperties()
 {
@@ -265,66 +267,6 @@ void CEMCApplication::ConstructVolumes()
 // public methods
 //
 
-//_____________________________________________________________________________
-void CEMCApplication::InitMCs()
-{
-/// Initialize MCs.
-
-  // Check for presence of G3 and G4 by name, required
-  Bool_t foundG3 = kFALSE;
-  Bool_t foundG4 = kFALSE;
-  for(TVirtualMC* mc : fMCEngines) {
-    if(strcmp(mc->GetName(), "TGeant3TGeo") == 0) {
-      foundG3 = kTRUE;
-    } else if(strcmp(mc->GetName(), "TGeant4") == 0) {
-      foundG4 = kTRUE;
-    }
-  }
-  if(!foundG3 || !foundG4) {
-    Fatal("CEMCApplication::InitMCs","Could not find both TGeant3 and TGeant4...exit");
-  }
-
-  for(TVirtualMC* mc : fMCEngines) {
-    // Notify to use geometry built using TGeo
-    mc->SetRootGeometry();
-    // create a user stack for each engine
-    CEMCStack* stack = new CEMCStack(fStackSize);
-    fStacks.push_back(stack);
-    fCurrentMCEngine = mc;
-    mc->SetStack(stack);
-    mc->SetMagField(fMagField);
-    mc->Init();
-    mc->BuildPhysics();
-  }
-}
-
-//__________________________________________________________________________
-void CEMCApplication::RunMCs(Int_t nofEvents)
-{
-/// Run MC.
-/// \param nofEvents Number of events to be processed
-// First see list of TGeoNavigator objects registered to TGeoManager
-Info("RunMCs", "There are %i navigators registered to TGeoManager", gGeoManager->GetListOfNavigators()->GetEntries());
-  // Run 1 event nofEvents times to cover TGeant3 and TGeant4 per event
-  for(Int_t i = 0; i < nofEvents; i++) {
-    // Start with TGeant4
-    fCurrentMCEngine = GetMC("TGeant4");
-    Info("RunMCs", "Starting one event for engine %s", fCurrentMCEngine->GetName());
-    fCurrentMCEngine->ProcessRun(1);
-    // Now change to TGeant3
-    fCurrentMCEngine = GetMC("TGeant3TGeo");
-    Info("RunMCs", "Switching to engine %s", fCurrentMCEngine->GetName());
-    fCurrentMCEngine->ProcessRun(1);
-    // Increment the number of events finished
-    fNEventsProcessed++;
-  }
-}
-
-//_____________________________________________________________________________
-void CEMCApplication::FinishRun()
-{
-/// Finish MC run.
-}
 
 //_____________________________________________________________________________
 TVirtualMCApplication* CEMCApplication::CloneForWorker() const
@@ -354,16 +296,13 @@ void CEMCApplication::ConstructGeometry()
 void CEMCApplication::InitGeometry()
 {
 /// Initialize geometry.
-  Info("InitGeometry", "Init geometry for engine %s", fCurrentMCEngine->GetName());
+  Info("InitGeometry", "Init geometry for all engines");
 }
 
 //_____________________________________________________________________________
 void CEMCApplication::GeneratePrimaries()
 {
-  // The stack is filled in Stepping, only TGeant4 is filled.
-  if(strcmp(fCurrentMCEngine->GetName(), "TGeant3TGeo") == 0 ) {
-    return;
-  }
+
   // Monitor calls to this method
   fNGeneratePrimaries++;
 /// Fill the user stack (derived from TVirtualMCStack) with primary particles.
@@ -375,7 +314,7 @@ void CEMCApplication::GeneratePrimaries()
  Int_t toBeDone = 1;
 
  // Geantino
- Int_t pdg  = 0;
+ Int_t pdg  = 2212;
 
  // Polarization
  Double_t polx = 0.;
@@ -390,30 +329,30 @@ void CEMCApplication::GeneratePrimaries()
 
  // Momentum
  Double_t px, py, pz, e;
- px = 1.;
+ px = 2000.;
  py = 0.;
  pz = 0.;
- e  = 1.;
+ e  = 2000.;
 
- TVirtualMCStack* stack = fCurrentMCEngine->GetStack();
  // Add particle to stack
- stack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
+ fMCStackManager->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
 
  // Change direction and add particle to stack
- px = 1.;
+ px = 2000.;
  py = 0.1;
  pz = 0.;
- stack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
+ fMCStackManager->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
 
  // Change direction and add particle to stack
- px = 1.;
+ px = 2000.;
  py = 0.;
  pz = 0.1;
- stack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
+ fMCStackManager->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
 }
+
 
 //_____________________________________________________________________________
 void CEMCApplication::BeginEvent()
@@ -437,44 +376,72 @@ void CEMCApplication::PreTrack()
 
   cout << endl;
   cout << "Starting new track" << endl;
+  // We know our PDG is 0 (geantino), so use this here
+  fCurrTrackId = gGeoManager->AddTrack(fCurrTrackId, 0);
 }
 
 //_____________________________________________________________________________
-void CEMCApplication::Stepping()
+void CEMCApplication::UserStepping()
 {
 /// User actions at each step.
 /// Print track position, the current volume and current medium names.
 
-  TLorentzVector position;
-  fCurrentMCEngine->TrackPosition(position);
+  // In case there are some tracks to be moved, do so.
+  //MoveTracks();
+
+  TLorentzVector currPosition;
+  TLorentzVector currMomentum;
+  fCurrentMCEngine->TrackPosition(currPosition);
+  fCurrentMCEngine->TrackMomentum(currMomentum);
+  Double_t currTof = fCurrentMCEngine->TrackTime();
   // Temporary pointer to name
   const char* currentEngineName = fCurrentMCEngine->GetName();
 
   Info("Stepping", "Stepping in engine %s", currentEngineName);
   // Count the secondaries
-  if(strcmp(currentEngineName, "TGeant4")) {
+  if(strcmp(currentEngineName, "TGeant4") == 0) {
     fNSecondariesG4 += fCurrentMCEngine->NSecondaries();
   } else {
     fNSecondariesG3 += fCurrentMCEngine->NSecondaries();
   }
 
-  cout << "Track "
-       << position.X() << " " << position.Y() << " " << position.Z()
-       << "  in " <<  fCurrentMCEngine->CurrentVolName() << "  ";
-
+  gGeoManager->GetTrack(fCurrTrackId)->AddPoint(currPosition.X(),
+                                                currPosition.Y(),
+                                                currPosition.Z(),
+                                                currTof);
+  cout << "Track\n"
+       << "\tPosition (x,y,z): "
+       << currPosition.X() << " " << currPosition.Y() << " " << currPosition.Z() << "\n"
+       << "\tMomentum (E, px, py, pz): " << currMomentum.E() << ", "
+       << currMomentum.Px() << ", " << currMomentum.Py() << ", " << currMomentum.Pz()
+       << "\nwith #secondaries: " << fCurrentMCEngine->NSecondaries()
+       << "\nin volume " <<  fCurrentMCEngine->CurrentVolName() << "  ";
 
   Int_t currentMed = fCurrentMCEngine->CurrentMedium();
   if (currentMed == fImedAr) cout << "MediumID: " << fImedAr <<  " ArgonGas";
   if (currentMed == fImedAl) cout << "MediumID: " << fImedAl <<  " Aluminium";
   if (currentMed == fImedPb) cout << "MediumID: " << fImedPb <<  " Lead";
-  cout << endl;
+  cout << "\n----------" << endl;
 
-  // Nothing to do if medium hasn't changed
-  if(fPreviousMed == currentMed) {
-    return;
-  }
+  const Double_t* currPointNav = gGeoManager->GetCurrentPoint();
+  cout << "Current state of navigator:\n";
+  cout << "Path: " << gGeoManager->GetPath() << "\n";
+  cout << "Point (x, y, z): " << currPointNav[0] << ", "
+                                << currPointNav[1] << ", "
+                                << currPointNav[2] << endl;
+  gGeoManager->GetCurrentNode()->Print();
+  cout << "----------" << endl;
+
+
+  // Nothing to do if volume hasn't changed
+  /*
   Int_t copyNo;
   Int_t currentVolID = fCurrentMCEngine->CurrentVolID(copyNo);
+  if(fPreviousVolID == curentVolID && !fCurrentMCEngine->IsTrackExiting()) {
+    return;
+  }
+
+  //SuggestCurrentTrackToBeMoved();
   // Move track to TGeant3 in case TGeant4 if track is about to leave tracker volume.
   if(currentVolID == fTrackerTubeID && fCurrentMCEngine->IsTrackExiting() && strcmp(currentEngineName, "TGeant4") == 0) {
     TVirtualMCStack* futureStack = GetMC("TGeant3TGeo")->GetStack();
@@ -485,35 +452,36 @@ void CEMCApplication::Stepping()
     // Get current track and associated particle
     TVirtualMCStack* currentStack = fCurrentMCEngine->GetStack();
     // Track ID (filled by stack)
-    Int_t ntr;
-    // Move that track to future stack
-    Double_t currPosX;
-    Double_t currPosY;
-    Double_t currPosZ;
-    Double_t currMomX;
-    Double_t currMomY;
-    Double_t currMomZ;
-    Double_t currE;
-    Int_t currPDG = fCurrentMCEngine->TrackPid();
-    Double_t currTof = fCurrentMCEngine->TrackTime();
-    // \note \todo These are the initial polarisations
-    TParticle* particle = currentStack->GetCurrentTrack();
-    TVector3 v;
-    particle->GetPolarisation(v);
-    fCurrentMCEngine->TrackPosition(currPosX, currPosY, currPosZ);
-    fCurrentMCEngine->TrackMomentum(currMomX, currMomY, currMomZ, currE);
-    futureStack->PushTrack(1, -1, currPDG, currMomX, currMomY, currMomZ, currE,
-                           currPosX, currPosY, currPosZ, 0., v.X(), v.Y(), v.Z(),
-                           kPTransportation, ntr, 1., 0);
-    fNMovedTracks++;
+
     Info("Stepping", "Track exits tracker, move track from TGeant4 stack to TGeant3TGeo stack");
-    cout << "Some track properties:\n";
-    cout << "x, y, z = " << currPosX << ", " << currPosY << ", " << currPosZ << "\n";
-    cout << "E, p_x, p_y, p_z = " << currE << ", " << currMomX << ", " << currMomY << ", " << currMomZ << endl;
     // Finally stop the track at the current engine
     fCurrentMCEngine->StopTrack();
   }
+  */
 }
+
+//_____________________________________________________________________________
+/*void CEMCApplication::SuggestCurrentTrackToBeMoved()
+{
+  TLorentzVector currPosition;
+  TLorentzVector currMomentum;
+  fCurrentMCEngine->TrackPosition(currPosition);
+  fCurrentMCEngine->TrackMomentum(currMomentum);
+  Double_t currTof = fCurrentMCEngine->TrackTime();
+  Int_t ntr;
+  // Move that track to future stack
+  Int_t currPDG = fCurrentMCEngine->TrackPid();
+  // \note \todo These are the initial polarisations
+  TParticle* particle = currentStack->GetCurrentTrack();
+  TVector3 v;
+  particle->GetPolarisation(v);
+
+  fMasterStack->CacheTrack(1, -1, currPDG, currMomentum.Px(), currMomentum.Py(),
+                         currMomentum.Pz(), currMomentum.E(), currPosition.X(),
+                         currPosition.Y(), currPosition.Z(), currTof, v.X(),
+                         v.Y(), v.Z(), kPPrimary, ntr, particle->GetWeight(), 0);
+  fNMovedTracks++;
+}*/
 
 //_____________________________________________________________________________
 void CEMCApplication::PostTrack()
@@ -541,32 +509,27 @@ void CEMCApplication::FinishEvent()
 }
 
 //_____________________________________________________________________________
-void CEMCApplication::PrintSummary() const
+void CEMCApplication::PrintStatus() const
 {
-  Info("PrintSummary", "Print summary");
-  cout << "# events processed: " << fNEventsProcessed << "\n";
-  cout << "# tracks transported by TGeant4: " << fNTracksG4 << "\n";
-  cout << "# tracks transported by TGeant3TGeo: " << fNTracksG3 << "\n";
-  cout << "# tracks transferred from TGeant4 to TGeant3TGeo: " << fNMovedTracks << "\n";
-  cout << "# secondaries produced during TGeant4 transport: " << fNSecondariesG4 << "\n";
-  cout << "# secondaries produced during TGeant3TGeo transport: " << fNSecondariesG4 << "\n";
-  cout << "# explicit primary generation: " << fNGeneratePrimaries << "\n";
-}
-
-//_____________________________________________________________________________
-void CEMCApplication::SetPrimaryMCEngine(TVirtualMC* mc)
-{
-  SetPrimaryMCEngine(mc->GetName());
-}
-
-//_____________________________________________________________________________
-void CEMCApplication::SetPrimaryMCEngine(const char* mcName)
-{
-  for(TVirtualMC* mc : fMCEngines) {
-    if(strcmp(mc->GetName(), mcName) == 0) {
-      //fPrimaryMCEngine = mc;
-      return;
-    }
+  cout << "#############################################\n";
+  cout << "########## STATUS of MCApplication ##########\n";
+  cout << "#############################################\n";
+  cout << "---> Registered MC engines: \n";
+  /*
+  for(const TVirtualMC* mc : fMCEngines) {
+    cout << "\t" << mc->GetName() << "\n";
   }
-  Fatal("SetPrimaryMCEngine", "Engine %s not found.", mcName);
+  cout << "---> Event and track info: \n"
+       << "\t# events processed: " << fNEventsProcessed << "\n"
+       << "\t# tracks transported by TGeant4: " << fNTracksG4 << "\n"
+       << "\t# tracks transported by TGeant3TGeo: " << fNTracksG3 << "\n"
+       << "\t# tracks transferred from TGeant4 to TGeant3TGeo: " << fNMovedTracks << "\n"
+       << "\t# secondaries produced during TGeant4 transport: " << fNSecondariesG4 << "\n"
+       << "\t# secondaries produced during TGeant3TGeo transport: " << fNSecondariesG3 << "\n"
+       << "\t# explicit primary generation: " << fNGeneratePrimaries << "\n"
+       << "\tstack sizes: \n";
+  for(const TVirtualMC* mc : fMCEngines) {
+    cout << "\t\t" << mc->GetStack()->GetNtrack() << "\n";
+  }
+  */
 }

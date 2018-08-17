@@ -50,6 +50,7 @@ class CEMCStack : public TVirtualMCStack
     virtual void  SetCurrentTrack(Int_t itrack);
 
     // get methods
+    virtual Int_t  GetNtrackToDo() const;
     virtual Int_t  GetNtrack() const;
     virtual Int_t  GetNprimary() const;
     virtual TParticle* GetCurrentTrack() const;
