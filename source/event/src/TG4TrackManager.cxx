@@ -86,6 +86,7 @@ void  TG4TrackManager::AddPrimaryParticleId(G4int id)
 /// Puts the given id in fPrimaryParticleIds.
 /// This is then used to keep the primary track Ids identical
 /// with Ids in VMC stack.
+/// \note Not exactly, it rather maps the ids to one another
 
   fPrimaryParticleIds.push_back(id);
 }
@@ -95,6 +96,13 @@ G4int TG4TrackManager::SetTrackInformation(const G4Track* track, G4bool overWrit
 {
 /// Set track index in VMC stack to track information
 /// and return its value
+/// If track index (aka track number in VMC slang) is positive, the track is
+/// 1) already known to the VMC stack OR
+/// 2) in case of fTrackSaveControl == kDoNotSave the internal counter fTrackCounter
+///    is used as the trach number. \note The track itself is then unknown to the
+///    VMC stack.
+/// be already known. If it is negative at the end of this method, a track number
+/// needs to be updated as soon as the track was pushed to the VMC stack
 
 #ifdef MCDEBUG
   if ( !fG4TrackingManager ) {
@@ -117,33 +125,43 @@ G4int TG4TrackManager::SetTrackInformation(const G4Track* track, G4bool overWrit
 
   // track index in the particles array
   Int_t trackIndex = trackInfo->GetTrackParticleID();
+  // Track index (=track ID in VMC stack) has not yet been assigned
   if ( trackIndex < 0 ) {
      // Do not reset particle ID if it is already set
     G4int trackID = track->GetTrackID();
     G4int parentID = track->GetParentID();
+    // If it is a primary added via TG4PrimaryGeneratorAction::TransformPrimaries
+    // the track index can be looked up from the fPrimaryParticleIds which was
+    // filled when the primaries were added.
     if ( parentID == 0 ) {
       // in VMC track numbering starts from 0
       // trackIndex = trackID-1;
+      // \note \todo GEANT4 tack ID starts with one?! This also means that the
+      // primary pushed to GEANT4 first is processed first. That is still compatible
+      // with the changes in TG4PrimaryGeneratorAction::TransformPrimaries wrt
+      // the way primaries are popped from the VMC stack
       trackIndex = fPrimaryParticleIds[trackID-1];
+      // \note added verbosity
+      G4cout << "Set track information for primary\n";
+      // Set the VMC track number
+      trackInfo->SetTrackParticleID(trackIndex);
     }
-    else {
-      if ( fTrackSaveControl != kDoNotSave ) {
-        trackIndex = fMCQueue->GetNtrack();
-        if ( overWrite ) trackIndex--;
-      }
-      else
+    // That no happens for secondaries internally produced by GEANT4 which haven't
+    // been seen by the VMC stack
+    else if ( fTrackSaveControl == kDoNotSave ) {
         trackIndex = fTrackCounter;
             // if secondaries are not stacked in VMC stack
             // use own counter for setting track index
     }
+
+    G4cout << "\tG4 internal trackID: " << trackID << " (paren: " << parentID << " )\n"
+           << "\tVMC stack trackID: " << trackIndex << G4endl;
     if ( VerboseLevel() > 1 )
       G4cout << "TG4TrackManager::SetTrackInformation: setting " << trackIndex << G4endl;
-
-    trackInfo->SetTrackParticleID(trackIndex);
   }
 
   // set current track number
-  // fMCQueue->SetCurrentTrack(trackIndex);
+  //TMCStackManager::Instance()->SetCurrentTrack(trackIndex);
   ++fTrackCounter;
 
   return trackIndex;
@@ -213,14 +231,15 @@ void  TG4TrackManager::SetBackPDGLifetime(const G4Track* aTrack)
 
 #ifdef STACK_WITH_KEEP_FLAG
 //_____________________________________________________________________________
-void TG4TrackManager::TrackToStack(const G4Track* track, G4bool overWrite)
+G4int TG4TrackManager::TrackToStack(const G4Track* track, G4bool overWrite)
 #else
 //_____________________________________________________________________________
-void TG4TrackManager::TrackToStack(const G4Track* track, G4bool /*overWrite*/)
+G4int TG4TrackManager::TrackToStack(const G4Track* track, G4bool /*overWrite*/)
 #endif
 {
 /// Get all needed parameters from G4track and pass them
 /// to the VMC stack.
+/// Return the track number assigned by the VMC stack
 
   if ( VerboseLevel() > 2 )
     G4cout << "TG4TrackManager::TrackToStack" << G4endl;
@@ -297,6 +316,8 @@ void TG4TrackManager::TrackToStack(const G4Track* track, G4bool /*overWrite*/)
     ->PushTrack(0, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                 polX, polY, polZ, mcProcess, ntr, weight, status);
 #endif
+  // Now return the track number which was assigned by the VMC stack
+  return ntr;
 }
 
 //_____________________________________________________________________________

@@ -80,7 +80,8 @@ void TG4EventAction::BeginOfEventAction(const G4Event* event)
   fTrackingAction->PrepareNewEvent();
 
   // fill primary particles in VMC stack if stack is empty
-  if ( fMCQueue->GetNtrack() == 0 ) {
+  // \note \todo Ask explicitly for primaries
+  if ( TMCStackManager::Instance()->GetNtrack() == 0 ) {
     if (VerboseLevel() > 0)
       G4cout << "Filling VMC stack with primaries" << G4endl;
 

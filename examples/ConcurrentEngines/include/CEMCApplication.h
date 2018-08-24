@@ -17,7 +17,9 @@
 ///
 /// \author B. Volkel; Heidelberg University
 
-#include <TVirtualMCApplication.h>
+#include <map> // For testing/providing mapping between VMC stack track and TGeoTrack
+
+#include <TVirtualMCConcurrentApplication.h>
 #include <TVirtualMCStack.h>
 
 class TVirtualMagField;
@@ -30,7 +32,7 @@ class TVirtualMC;
 /// \date 02/08/2018
 /// \author B. Volkel; Heidelberg University
 
-class CEMCApplication : public TVirtualMCApplication
+class CEMCApplication : public TVirtualMCConcurrentApplication
 {
   public:
     CEMCApplication(const char *name, const char *title);
@@ -40,49 +42,40 @@ class CEMCApplication : public TVirtualMCApplication
     // static access method
     static CEMCApplication* Instance();
 
-    // methods
-    void InitMCs();
-    void RunMCs(Int_t nofEvents);
-    // Now used for cleaning up (especially TGeant4) after running single events
-    void TerminateRun();
     // Export the geometry for further inspection
     void ExportGeometry(const char* path = ".") const;
     // Print a summary of the run status.
     void PrintStatus() const;
-    // Populate the master stack
-    void GeneratePrimariesMaster();
-    // Initialise stacks by passing primaries from master stack to respective engine stacks
-    void InitializeStacks();
 
-    virtual TVirtualMCApplication* CloneForWorker() const;
-    virtual void InitForWorker() const;
-    virtual void ConstructGeometry();
-    virtual void InitGeometry();
-    virtual void GeneratePrimaries();
-    virtual void BeginEvent();
-    virtual void BeginPrimary();
-    virtual void PreTrack();
-    virtual void UserStepping();
-    virtual void PostTrack();
-    virtual void FinishPrimary();
-    virtual void FinishEvent();
-    virtual void SetMCMediaProperties();
+    /// Run the simulation chain
+    void Run(Int_t nofEvents);
+
+    //virtual TVirtualMCApplication* CloneForWorker() const override;
+    virtual void InitForWorker() const  override;
+    virtual void ConstructGeometry() override;
+    virtual void InitGeometryConcurrent() override;
+    virtual void GeneratePrimaries() override;
+    virtual void BeginEventConcurrent() override;
+    virtual void BeginPrimaryConcurrent() override;
+    virtual void PreTrackConcurrent() override;
+    virtual void SteppingConcurrent() override;
+    virtual void PostTrackConcurrent() override;
+    virtual void FinishPrimaryConcurrent() override;
+    virtual void FinishEventConcurrent() override;
 
     // methods for tests
     void SetOldGeometry(Bool_t oldGeometry = kTRUE);
-    void TestVMCGeometryGetters();
 
   private:
     // methods
     void ConstructMaterials();
     void ConstructVolumes();
-    // Initialize SelectionCriteria ==> extracting volume ids
-    void InitializeSelectionCriteria();
 
     // data members
     TVirtualMC*       fCurrentMCEngine;          ///< Pointer to current MC engine
     TVirtualMagField* fMagField;                 ///< The magnetic field
     TMCStackManager*  fMCStackManager;           ///< Store pointer to global TMCStackManager
+    TVirtualMCStack*  fStack;                    ///< VMC stack to push tracks to
     Int_t             fImedAr;                   ///< The Argon gas medium Id
     Int_t             fImedAl;                   ///< The Aluminium medium Id
     Int_t             fImedPb;                   ///< The Lead medium Id
@@ -91,16 +84,20 @@ class CEMCApplication : public TVirtualMCApplication
     Int_t             fTrackerTubeID;            ///< volume ID fo the tracker tube
     Int_t             fNEventsProcessed;         ///< Number of processed events
     Int_t             fCurrTrackId;              ///< Id of track currently processed
+    Int_t             fCurrGeoTrackId;           ///< Current TGeoTrack id
     Int_t             fStackSize;                ///< Size of the stack
     Int_t             fNMovedTracks;             ///< Number of tracks moved from TGeant4 stack to TGeant3TGeo stack
     Int_t             fNTracksG3;                ///< Number of tracks processed by TGeant3TGeo
     Int_t             fNTracksG4;                ///< Number of tracks processed by TGeant4
     Int_t             fNSecondariesG3;           ///< Number of secondaries produced in TGeant3TGeo transport
     Int_t             fNSecondariesG4;           ///< Number of secondaries produced in TGeant4 transport
+    Int_t             fNSecondaries;             ///< All secondaries
     Int_t             fNGeneratePrimaries;       ///< Monitor number of primary generation
     Bool_t            fDryRun;                   ///< Having a dryrun
     Bool_t            fChooseEngineForTopVolume; ///< false: Just keep the current engine, true: change engine
     // /TVirtualMC*       fCurrentMCEngine
+    std::map<Int_t,Int_t> fTrackIdToGeoTrackId;  ///< Map VMC stack track number to TGeoTrack id used for drawing tracks with TGeoManager
+    std::map<Int_t,Int_t> fSteps;                ///< Monitor the number of steps for a given track number
 
 
   ClassDef(CEMCApplication,1)  //Interface to MonteCarlo application
@@ -111,7 +108,7 @@ class CEMCApplication : public TVirtualMCApplication
 inline CEMCApplication* CEMCApplication::Instance()
 {
   /// \return The MC application instance
-  return (CEMCApplication*)(TVirtualMCApplication::Instance());
+  return (CEMCApplication*)(TVirtualMCConcurrentApplication::Instance());
 }
 
 #endif //CE_MC_APPLICATION_H

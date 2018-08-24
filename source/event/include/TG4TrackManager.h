@@ -56,7 +56,7 @@ class TG4TrackManager : public TG4Verbose
     void  SetParentToTrackInformation(const G4Track* aTrack);
     void  SetBackPDGLifetime(const G4Track* aTrack);
 
-    void  TrackToStack(const G4Track* track, G4bool overWrite = false);
+    G4int TrackToStack(const G4Track* track, G4bool overWrite = false);
     void  PrimaryToStack(const G4PrimaryVertex* vertex,
                        const G4PrimaryParticle* particle);
 

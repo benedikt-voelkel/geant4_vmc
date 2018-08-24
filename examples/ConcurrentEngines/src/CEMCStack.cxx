@@ -104,9 +104,10 @@ void  CEMCStack::PushTrack(Int_t toBeDone, Int_t parent, Int_t pdg,
 
   const Int_t kFirstDaughter=-1;
   const Int_t kLastDaughter=-1;
-
+  // Set track number already at beginning and forward to TParticle constructor
+  ntr = GetNtrack();
   TParticle* particleDef
-    = new TParticle(pdg, is, parent, -1, kFirstDaughter, kLastDaughter,
+    = new TParticle(ntr, pdg, is, parent, -1, kFirstDaughter, kLastDaughter,
 		     px, py, pz, e, vx, vy, vz, tof);
 
   particleDef->SetPolarisation(polx, poly, polz);
@@ -125,7 +126,9 @@ void  CEMCStack::PushTrack(Int_t toBeDone, Int_t parent, Int_t pdg,
 
   if (toBeDone) fStack.push(particle);
 
-  ntr = GetNtrack() - 1;
+  Info("PushTrack", "Pushed track with id %i", ntr);
+
+  //ntr = GetNtrack() - 1;
 }
 
 //_____________________________________________________________________________

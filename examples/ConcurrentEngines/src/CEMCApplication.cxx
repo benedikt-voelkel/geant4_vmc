@@ -23,7 +23,6 @@
 #include <TROOT.h>
 #include <Riostream.h>
 #include <TInterpreter.h>
-#include <TVirtualMC.h>
 #include <TMCStackManager.h>
 #include <TLorentzVector.h>
 #include <TArrayD.h>
@@ -44,7 +43,7 @@ ClassImp(CEMCApplication)
 
 //_____________________________________________________________________________
 CEMCApplication::CEMCApplication(const char *name, const char *title)
-  : TVirtualMCApplication(name,title),
+  : TVirtualMCConcurrentApplication(name,title),
     fCurrentMCEngine(nullptr),
     fMagField(0),
     fMCStackManager(TMCStackManager::Instance()),
@@ -56,10 +55,12 @@ CEMCApplication::CEMCApplication(const char *name, const char *title)
     fTrackerTubeID(-1),
     fNEventsProcessed(0),
     fCurrTrackId(0),
+    fCurrGeoTrackId(0),
     fStackSize(100),
     fNMovedTracks(0),
     fNTracksG3(0),
     fNTracksG4(0),
+    fNSecondaries(0),
     fNSecondariesG3(0),
     fNSecondariesG4(0),
     fNGeneratePrimaries(0),
@@ -73,13 +74,14 @@ CEMCApplication::CEMCApplication(const char *name, const char *title)
 
   // create magnetic field (with zero value)
   fMagField = new TGeoUniformMagField();
-  fMCStackManager->RegisterStack(new CEMCStack(fStackSize));
+  fStack = new CEMCStack(fStackSize);
+  fMCStackManager->RegisterStack(fStack);
   fMCManager->ConnectToCurrentMC(fCurrentMCEngine);
 }
 
 //_____________________________________________________________________________
 CEMCApplication::CEMCApplication()
-  : TVirtualMCApplication(),
+  : TVirtualMCConcurrentApplication(),
     fCurrentMCEngine(nullptr),
     fMagField(0),
     fMCStackManager(TMCStackManager::Instance()),
@@ -91,10 +93,12 @@ CEMCApplication::CEMCApplication()
     fTrackerTubeID(-1),
     fNEventsProcessed(0),
     fCurrTrackId(0),
+    fCurrGeoTrackId(0),
     fStackSize(100),
     fNMovedTracks(0),
     fNTracksG3(0),
     fNTracksG4(0),
+    fNSecondaries(0),
     fNSecondariesG3(0),
     fNSecondariesG4(0),
     fNGeneratePrimaries(0),
@@ -109,15 +113,6 @@ CEMCApplication::~CEMCApplication()
 {
 /// Destructor
   delete fMagField;
-}
-
-//
-// private methods
-//
-
-void CEMCApplication::SetMCMediaProperties()
-{
-  Info("SetMCMediaProperties", "Setup media properties for transportation");
 }
 
 void CEMCApplication::ExportGeometry(const char* path) const
@@ -269,10 +264,10 @@ void CEMCApplication::ConstructVolumes()
 
 
 //_____________________________________________________________________________
-TVirtualMCApplication* CEMCApplication::CloneForWorker() const
-{
-  return new CEMCApplication(GetName(), GetTitle());
-}
+//TVirtualMCApplication* CEMCApplication::CloneForWorker() const
+//{
+//  return new CEMCApplication(GetName(), GetTitle());
+//}
 
 //_____________________________________________________________________________
 void CEMCApplication::InitForWorker() const
@@ -293,7 +288,7 @@ void CEMCApplication::ConstructGeometry()
 }
 
 //_____________________________________________________________________________
-void CEMCApplication::InitGeometry()
+void CEMCApplication::InitGeometryConcurrent()
 {
 /// Initialize geometry.
   Info("InitGeometry", "Init geometry for all engines");
@@ -329,75 +324,87 @@ void CEMCApplication::GeneratePrimaries()
 
  // Momentum
  Double_t px, py, pz, e;
- px = 2000.;
+ px = 10.;
  py = 0.;
  pz = 0.;
- e  = 2000.;
+ e  = 10.;
+
+
 
  // Add particle to stack
- fMCStackManager->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
+ fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
 
  // Change direction and add particle to stack
- px = 2000.;
+/*
+ px = 10.;
  py = 0.1;
  pz = 0.;
  fMCStackManager->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
 
  // Change direction and add particle to stack
- px = 2000.;
+ px = 1000.;
  py = 0.;
  pz = 0.1;
  fMCStackManager->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
+  */
 }
 
 
 //_____________________________________________________________________________
-void CEMCApplication::BeginEvent()
+void CEMCApplication::BeginEventConcurrent()
 {
 /// User actions at beginning of event.
 /// Nothing to be done this example
 }
 
 //_____________________________________________________________________________
-void CEMCApplication::BeginPrimary()
+void CEMCApplication::BeginPrimaryConcurrent()
 {
 /// User actions at beginning of a primary track.
 /// Nothing to be done this example
 }
 
 //_____________________________________________________________________________
-void CEMCApplication::PreTrack()
+void CEMCApplication::PreTrackConcurrent()
 {
 /// User actions at beginning of each track.
 /// Print info message.
 
   cout << endl;
-  cout << "Starting new track" << endl;
   // We know our PDG is 0 (geantino), so use this here
-  fCurrTrackId = gGeoManager->AddTrack(fCurrTrackId, 0);
+  //fCurrTrackId = gGeoManager->AddTrack(fCurrTrackId, 0);
+  fCurrTrackId = fMCStackManager->GetCurrentTrackNumber();
+  cout << endl;
+  cout << "Starting track " << fCurrTrackId;
+  if(fTrackIdToGeoTrackId.find(fCurrTrackId) == fTrackIdToGeoTrackId.end()) {
+    fTrackIdToGeoTrackId[fCurrTrackId] = gGeoManager->AddTrack(fCurrTrackId, 0);
+    cout << " (new)";
+    fSteps[fCurrTrackId] = 0;
+  }
+  cout << endl;
+  fCurrGeoTrackId = fTrackIdToGeoTrackId[fCurrTrackId];
+  fSteps[fCurrTrackId]++;
 }
 
 //_____________________________________________________________________________
-void CEMCApplication::UserStepping()
+void CEMCApplication::SteppingConcurrent()
 {
 /// User actions at each step.
 /// Print track position, the current volume and current medium names.
 
-  // In case there are some tracks to be moved, do so.
-  //MoveTracks();
 
   TLorentzVector currPosition;
   TLorentzVector currMomentum;
   fCurrentMCEngine->TrackPosition(currPosition);
   fCurrentMCEngine->TrackMomentum(currMomentum);
-  Double_t currTof = fCurrentMCEngine->TrackTime();
+  //Double_t currTof = fCurrentMCEngine->TrackTime();
   // Temporary pointer to name
   const char* currentEngineName = fCurrentMCEngine->GetName();
 
-  Info("Stepping", "Stepping in engine %s", currentEngineName);
+  //Info("Stepping", "Stepping in engine %s", currentEngineName);
   // Count the secondaries
   if(strcmp(currentEngineName, "TGeant4") == 0) {
     fNSecondariesG4 += fCurrentMCEngine->NSecondaries();
@@ -405,17 +412,34 @@ void CEMCApplication::UserStepping()
     fNSecondariesG3 += fCurrentMCEngine->NSecondaries();
   }
 
-  gGeoManager->GetTrack(fCurrTrackId)->AddPoint(currPosition.X(),
-                                                currPosition.Y(),
-                                                currPosition.Z(),
-                                                currTof);
+  gGeoManager->GetTrack(fCurrGeoTrackId)->AddPoint(currPosition.X(),
+                                                     currPosition.Y(),
+                                                     currPosition.Z(),
+                                                     currPosition.T());
+
+  fNSecondaries += fCurrentMCEngine->NSecondaries();
+  cout << currentEngineName << ", trackID: " << fCurrTrackId << ", PDGID: " << fCurrentMCEngine->TrackPid() << ", Position (t,x,y,z): "
+      << currPosition.T() << ", " << currPosition.X() << " " << currPosition.Y() << " " << currPosition.Z()
+      << ", Momentum (E, px, py, pz): " << currMomentum.E() << ", "
+      << currMomentum.Px() << ", " << currMomentum.Py() << ", " << currMomentum.Pz()
+      << ", #secondaries: " << fCurrentMCEngine->NSecondaries()
+      << endl;
+
+
+  //cout << "#particles on stack: " << fMCStackManager->GetNtrack() << "\n"
+      // << "#primaries: 3\n"
+      // << "#secondaries: " << fNSecondaries << "(" << fCurrentMCEngine->NSecondaries() << ")" << endl;
+
+  /*
+  Int_t copyNo;
+  Int_t volID = fCurrentMCEngine->CurrentVolID(copyNo);
   cout << "Track\n"
-       << "\tPosition (x,y,z): "
-       << currPosition.X() << " " << currPosition.Y() << " " << currPosition.Z() << "\n"
+       << "\tPosition (t, x,y,z): "
+       << currPosition.T() << ", " << currPosition.X() << " " << currPosition.Y() << " " << currPosition.Z() << "\n"
        << "\tMomentum (E, px, py, pz): " << currMomentum.E() << ", "
        << currMomentum.Px() << ", " << currMomentum.Py() << ", " << currMomentum.Pz()
        << "\nwith #secondaries: " << fCurrentMCEngine->NSecondaries()
-       << "\nin volume " <<  fCurrentMCEngine->CurrentVolName() << "  ";
+       << "\nin volume " <<  fCurrentMCEngine->CurrentVolName() << " (ID: " << volID << ") ";
 
   Int_t currentMed = fCurrentMCEngine->CurrentMedium();
   if (currentMed == fImedAr) cout << "MediumID: " << fImedAr <<  " ArgonGas";
@@ -431,7 +455,7 @@ void CEMCApplication::UserStepping()
                                 << currPointNav[2] << endl;
   gGeoManager->GetCurrentNode()->Print();
   cout << "----------" << endl;
-
+  */
 
   // Nothing to do if volume hasn't changed
   /*
@@ -461,30 +485,7 @@ void CEMCApplication::UserStepping()
 }
 
 //_____________________________________________________________________________
-/*void CEMCApplication::SuggestCurrentTrackToBeMoved()
-{
-  TLorentzVector currPosition;
-  TLorentzVector currMomentum;
-  fCurrentMCEngine->TrackPosition(currPosition);
-  fCurrentMCEngine->TrackMomentum(currMomentum);
-  Double_t currTof = fCurrentMCEngine->TrackTime();
-  Int_t ntr;
-  // Move that track to future stack
-  Int_t currPDG = fCurrentMCEngine->TrackPid();
-  // \note \todo These are the initial polarisations
-  TParticle* particle = currentStack->GetCurrentTrack();
-  TVector3 v;
-  particle->GetPolarisation(v);
-
-  fMasterStack->CacheTrack(1, -1, currPDG, currMomentum.Px(), currMomentum.Py(),
-                         currMomentum.Pz(), currMomentum.E(), currPosition.X(),
-                         currPosition.Y(), currPosition.Z(), currTof, v.X(),
-                         v.Y(), v.Z(), kPPrimary, ntr, particle->GetWeight(), 0);
-  fNMovedTracks++;
-}*/
-
-//_____________________________________________________________________________
-void CEMCApplication::PostTrack()
+void CEMCApplication::PostTrackConcurrent()
 {
   // Sum number of tracks processed by respective engines.
   if(strcmp(fCurrentMCEngine->GetName(), "TGeant4") == 0) {
@@ -495,17 +496,23 @@ void CEMCApplication::PostTrack()
 }
 
 //_____________________________________________________________________________
-void CEMCApplication::FinishPrimary()
+void CEMCApplication::FinishPrimaryConcurrent()
 {
 /// User actions after finishing of a primary track.
 /// Nothing to be done this example
 }
 
 //_____________________________________________________________________________
-void CEMCApplication::FinishEvent()
+void CEMCApplication::FinishEventConcurrent()
 {
 /// User actions after finishing of an event
 /// Nothing to be done this example
+}
+
+void CEMCApplication::Run(Int_t nofEvents)
+{
+  fMCManager->InitMCs();
+  fMCManager->RunMCs(nofEvents);
 }
 
 //_____________________________________________________________________________

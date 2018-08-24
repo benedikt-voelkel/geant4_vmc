@@ -91,7 +91,7 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
 
   if ( fMCQueue->GetNtrack() == 0 )
     return &aParticleChange;
-
+  G4cout << "Stackpopper" << G4endl;
   //fMCStack->SetCurrentTrack(currentTrackId);
   Int_t nofTracksToPop = fMCQueue->GetNtrack();
   aParticleChange.SetNumberOfSecondaries(

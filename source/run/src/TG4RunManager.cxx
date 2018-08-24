@@ -486,8 +486,8 @@ void TG4RunManager::ProcessEvent(G4int eventId)
 {
 /// Not yet implemented.
 
-  TG4Globals::Warning(
-    "TG4RunManager", "ProcessEvent", "Not implemented.");
+  //TG4Globals::Warning(
+    //"TG4RunManager", "ProcessEvent", "Not implemented.");
   // Replay what is done in GEANT4 BeamOn
   if(!fHasRunInitializationOneEvent) {
     G4bool cond = fRunManager->ConfirmBeamOnCondition();

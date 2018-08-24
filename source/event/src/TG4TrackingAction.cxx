@@ -192,18 +192,23 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
   }
 
   // set track information
+  // \note This is a new track, TG4TrackManager::SetTrackInformation needs
+  // to know that in order to provide the VMC stack ID for the next particle
   G4int trackId
     = fTrackManager->SetTrackInformation(track, fOverwriteLastTrack);
-  TMCStackManager::Instance()->SetCurrentTrack(trackId);
+    // Do that here in case the track is already known i.e. either a primary or a
+    // secondary pushed to the VMC stack in the step it was produced
 
   if ( isFirstStep ) {
     if (track->GetParentID() == 0) {
       fPrimaryTrackID = track->GetTrackID();
 
       // begin this primary track
+      // \todo Here it is possible to retrieve the VMC stack info to see whether
+      // whether that is a real primary
       fMCApplication->BeginPrimary();
 
-      // set saving flag
+      // Set saving flag since it's a primary which is already on the VMC stack
       fTrackSaveControl = kDoNotSave;
     }
     else {
@@ -214,12 +219,21 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
 
     // save track in stack
     if ( fTrackSaveControl == kSaveInPreTrack ) {
-      fTrackManager->TrackToStack(track, fOverwriteLastTrack);
+      G4cout << "Save secondary in pre track" << G4endl;
+      // Get the track number the VMC stack has assigned
+      trackId = fTrackManager->TrackToStack(track, fOverwriteLastTrack);
+      // Update the VMC track number
+      fTrackManager->GetTrackInformation(track)->SetTrackParticleID(trackId);
 
       // Notify a stack popper (if activated) about saving this secondary
       if ( fStackPopper ) fStackPopper->Notify();
     }
   }
+  // \note The weird thing here is that the VMC is set to a track number it
+  // actually does not have the corresponding track to, namely in case
+  // fTrackSaveControl == kDoNotSave
+  TMCStackManager::Instance()->SetCurrentTrack(trackId);
+
 
   // verbose
   if ( track->GetTrackID() == fNewVerboseTrackID) {
