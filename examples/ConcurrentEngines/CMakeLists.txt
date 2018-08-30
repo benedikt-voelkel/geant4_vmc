@@ -55,7 +55,8 @@ include_directories(
 ROOT_GENERATE_DICTIONARY(
   ${CMAKE_SHARED_LIBRARY_PREFIX}${library_name}
   no_rootmap
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/CEMCApplication.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/CEMCSingleApplication.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/CEMCConcurrentApplication.h
   ${CMAKE_CURRENT_SOURCE_DIR}/include/CEMCStack.h
   ${CMAKE_CURRENT_SOURCE_DIR}/include/CEParticle.h
   LINKDEF ${CMAKE_CURRENT_SOURCE_DIR}/include/${program_name}LinkDef.h)

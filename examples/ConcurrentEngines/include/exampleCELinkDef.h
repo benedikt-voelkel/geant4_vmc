@@ -16,7 +16,9 @@
 #pragma link off all classes;
 #pragma link off all functions;
 
-#pragma link C++ class  CEMCApplication+;
+
+#pragma link C++ class  CEMCSingleApplication+;
+#pragma link C++ class  CEMCConcurrentApplication+;
 #pragma link C++ class  CEMCStack+;
 #pragma link C++ class  CEParticle+;
 
