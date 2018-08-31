@@ -408,13 +408,14 @@ void CEMCConcurrentApplication::SteppingConcurrent()
   Int_t volID = fCurrentMCEngine->CurrentVolID(copyNo);
   // Get spatial information from navigator
   const Double_t* currPointNav = gGeoManager->GetCurrentPoint();
+  Int_t volIdGeoMan = gGeoManager->GetCurrentVolume()->GetNumber();
   cout << "\nPosition VMC (t,x,y,z): " << currPosition.T() << ", "
        << currPosition.X() << " " << currPosition.Y() << " " << currPosition.Z()
        << " (volName: " << fCurrentMCEngine->CurrentVolName() << ", id, copyNo: "
        << volID << ", " << copyNo << ")"
        << "\nPosition navigator (x,y,z): " << currPointNav[0] << ", "
        << currPointNav[1] << ", " << currPointNav[2]
-       << " (path nav: " << gGeoManager->GetPath() << ")\n";
+       << " (path nav: " << gGeoManager->GetPath() << ", volid: " << volIdGeoMan << ")" << endl;
        /*
   cout << currentEngineName << ", trackID: " << fCurrTrackId << ", PDGID: "
        << fCurrentMCEngine->TrackPid()

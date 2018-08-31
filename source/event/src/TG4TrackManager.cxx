@@ -307,14 +307,14 @@ G4int TG4TrackManager::TrackToStack(const G4Track* track, G4bool /*overWrite*/)
   // create particle
   TMCStackManager::Instance()
     ->PushTrack(0, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
-                polX, polY, polZ, mcProcess, ntr, weight, status,
+                polX, polY, polZ, -1, mcProcess, ntr, weight, status,
                 overWrite);
         // Experimental code with flagging tracks in stack for overwrite;
         // not yet available in distribution
 #else
   TMCStackManager::Instance()
     ->PushTrack(0, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
-                polX, polY, polZ, mcProcess, ntr, weight, status);
+                polX, polY, polZ, -1, mcProcess, ntr, weight, status);
 #endif
   // Now return the track number which was assigned by the VMC stack
   return ntr;
@@ -371,7 +371,7 @@ void TG4TrackManager::PrimaryToStack(const G4PrimaryVertex* vertex,
   G4int ntr;
   // create particle
   TMCStackManager::Instance()->PushTrack(1, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
-                      polX, polY, polZ, mcProcess, ntr, weight, status);
+                      polX, polY, polZ, -1, mcProcess, ntr, weight, status);
 }
 
 

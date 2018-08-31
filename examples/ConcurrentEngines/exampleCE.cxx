@@ -156,14 +156,19 @@ Int_t runConcurrent(const char* firstEngineName, int argc, char** argv)
    [firstEngine, secondEngine, volIdChange]
    (TVirtualMC* currentMC, TVirtualMC*& targetMC)->Bool_t
    {
-     Int_t copyNo;
-     Int_t volId = currentMC->CurrentVolID(copyNo);
+
+     //Int_t copyNo;
+     //Int_t volId = currentMC->CurrentVolID(copyNo);
+     Int_t volId = gGeoManager->GetCurrentVolume()->GetNumber();
      if(!currentMC->IsTrackEntering()) {
        return kFALSE;
      }
-     if(volId == volIdChange) {
+     if(volId == volIdChange && currentMC != secondEngine) {
        targetMC = secondEngine;
        return kTRUE;
+       // If secondEngine is already active nothing to do
+     } else {
+       return kFALSE;
      }
      targetMC = firstEngine;
      return kTRUE;

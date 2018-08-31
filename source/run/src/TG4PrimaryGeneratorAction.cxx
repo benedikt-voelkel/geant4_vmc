@@ -29,7 +29,7 @@
 #include <TVirtualMC.h>
 #include <TVirtualMCApplication.h>
 #include <TMCQueue.h>
-#include <TParticle.h>
+#include <TTrack.h>
 
 // Moved after Root includes to avoid shadowed variables
 // generated from short units names
@@ -75,8 +75,8 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
   // primaries it will be used to also deal with secondaries already processed/produced
   // by another engine
   // Check the number of particles in the queue
-  G4int nofParticles = mcQueue->GetNtrack();
-  if (nofParticles <= 0) {
+  G4int nofTracks = mcQueue->GetNtrack();
+  if (nofTracks <= 0) {
     TG4Globals::Exception(
       "TG4PrimaryGeneratorAction", "TransformPrimaries",
       "No primary particles found on the stack.");
@@ -84,18 +84,18 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
 
   if (VerboseLevel() > 1)
     G4cout << "TG4PrimaryGeneratorAction::TransformPrimaries: "
-           << nofParticles << " particles" << G4endl;
+           << nofTracks << " particles" << G4endl;
 
 
   G4PrimaryVertex* previousVertex = 0;
   G4ThreeVector previousPosition = G4ThreeVector();
   G4double previousTime = 0.;
 
-  TParticle* particle = nullptr;
+  TTrack* track = nullptr;
   // Pop particles until the queue is empty and fill a G4Event
   // \note Don't use the following implementation
   //
-  //  for (G4int i=0; i<nofParticles; i++) {
+  //  for (G4int i=0; i<nofTracks; i++) {
   //
   //    // get the particle from the stack
   //    TParticle* particle = mcStack->PopPrimaryForTracking(i);
@@ -106,31 +106,31 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
   // of the VMC stack namely that the ordering corresponds to the VMC track id
   // which does not need to be true. Again, popping the first primary does not imply it
   // has to have ID = 0 (or 1).
-  while((particle = mcQueue->PopNextTrack())) {
+  while((track = mcQueue->PopNextTrack())) {
     // only particles that didn't die (decay) in primary generator
     // will be transformed to G4 objects
 
     // Pass this particle Id (in the VMC stack) to Track manager
-    trackManager->AddPrimaryParticleId(particle->ID());
-    G4cout << "Add particle with ID " << particle->ID() << " to GEANT4 stack" << G4endl;
+    trackManager->AddPrimaryParticleId(track->Id());
+    G4cout << "Add track with ID " << track->Id() << " to GEANT4 stack" << G4endl;
     // Get particle definition from TG4ParticlesManager
     //
     G4ParticleDefinition* particleDefinition
-      = particlesManager->GetParticleDefinition(particle, false);
+      = particlesManager->GetParticleDefinition(track, false);
 
     if (!particleDefinition) {
       TString text = "pdgEncoding=";
-      text += particle->GetPdgCode();
+      text += track->GetPdgCode();
       TG4Globals::Exception(
        "TG4PrimaryGeneratorAction", "TransformPrimaries",
        "G4ParticleTable::FindParticle() failed for " +
-       TString(particle->GetName()) + "  "  + text + ".");
+       TString(track->GetName()) + "  "  + text + ".");
     }
 
     // Get/Create vertex
     G4ThreeVector position
-      = particlesManager->GetParticlePosition(particle);
-    G4double time = particle->T()*TG4G3Units::Time();
+      = particlesManager->GetParticlePosition(track);
+    G4double time = track->T()*TG4G3Units::Time();
     G4PrimaryVertex* vertex;
     // \note i==0 implies previousVertex==0, so checking the latter is enough
     //if ( i==0 || previousVertex ==0 ||
@@ -155,9 +155,9 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
     // (primaryParticle objects are destroyed in G4EventManager::ProcessOneEvent()
     // when event and then vertex is deleted)
     G4ThreeVector momentum
-      = particlesManager->GetParticleMomentum(particle);
+      = particlesManager->GetParticleMomentum(track);
     G4double energy
-      = particle->Energy()*TG4G3Units::Energy();
+      = track->Energy()*TG4G3Units::Energy();
     G4PrimaryParticle* primaryParticle
       = new G4PrimaryParticle(particleDefinition,
                               momentum.x(), momentum.y(), momentum.z(), energy);
@@ -174,12 +174,12 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
 
     // Set polarization
     TVector3 polarization;
-    particle->GetPolarisation(polarization);
+    track->GetPolarisation(polarization);
     primaryParticle
       ->SetPolarization(polarization.X(), polarization.Y(), polarization.Z());
 
     // Set weight
-    G4double weight =  particle->GetWeight();
+    G4double weight =  track->GetWeight();
     primaryParticle->SetWeight(weight);
 
     // Add primary particle to the vertex
@@ -187,7 +187,7 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
 
     // Verbose
     if (VerboseLevel() > 1) {
-      G4cout << "Primary particle (VMC stack ID: " << particle->ID() << "):" << G4endl;
+      G4cout << "Primary particle (VMC stack ID: " << track->Id() << "):" << G4endl;
       primaryParticle->Print();
     }
   }

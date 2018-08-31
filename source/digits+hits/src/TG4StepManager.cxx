@@ -350,10 +350,19 @@ G4VPhysicalVolume* TG4StepManager::GetCurrentPhysicalVolume() const
 
   if ( fStepStatus == kGflashSpot )
     return fGflashSpot->GetTouchableHandle()->GetVolume();
-  else if ( fStepStatus != kBoundary )
-    return fTrack->GetVolume();
-  else
+  // \note added verbosity and experimenal
+  else if ( fStepStatus != kBoundary ) {
+    G4cout << "G4 internal: Step not on boundary" << G4endl;
+    G4VPhysicalVolume* vol = fTrack->GetNextVolume();
+    if(!vol) {
+      return fTrack->GetVolume();
+    }
+    return vol;
+  }
+  else {
+    G4cout << "G4 internal: Step on boundary" << G4endl;
     return fTrack->GetNextVolume();
+  }
 }
 
 //_____________________________________________________________________________

@@ -22,7 +22,7 @@
 
 #include <TVirtualMC.h>
 #include <TMCQueue.h>
-#include <TParticle.h>
+#include <TTrack.h>
 
 
 G4ThreadLocal TG4StackPopper* TG4StackPopper::fgInstance = 0;
@@ -100,11 +100,11 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
   for (G4int i=0; i<nofTracksToPop; ++i) {
 
     // Pop particle from the stack
-    TParticle* particle = fMCQueue->PopNextTrack();
+    TTrack* track = fMCQueue->PopNextTrack();
 
-    if (!particle) {
+    if (!track) {
       TG4Globals::Exception(
-        "TG4StackPopper", "PostStepDoIt", "No particle popped from stack!");
+        "TG4StackPopper", "PostStepDoIt", "No track popped from stack!");
       return &aParticleChange;
     }
 
@@ -115,7 +115,7 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
 
     // Create dynamic particle
     G4DynamicParticle* dynamicParticle
-      = TG4ParticlesManager::Instance()->CreateDynamicParticle(particle);
+      = TG4ParticlesManager::Instance()->CreateDynamicParticle(track);
     if ( ! dynamicParticle ) {
       TG4Globals::Exception(
         "TG4StackPopper", "PostStepDoIt",
@@ -125,8 +125,8 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
     // Define track
 
     G4ThreeVector position
-      = TG4ParticlesManager::Instance()->GetParticlePosition(particle);
-    G4double time = particle->T()*TG4G3Units::Time();
+      = TG4ParticlesManager::Instance()->GetParticlePosition(track);
+    G4double time = track->T()*TG4G3Units::Time();
 
     G4Track* secondaryTrack
       = new G4Track(dynamicParticle, time, position);
@@ -134,11 +134,11 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
     // set track information here to avoid saving track in the stack
     // for the second time
     TG4TrackInformation* trackInformation
-      = new TG4TrackInformation(particle->ID());
+      = new TG4TrackInformation(track->Id());
         // the track information is deleted together with its
         // G4Track object
     trackInformation->SetIsUserTrack(true);
-    trackInformation->SetPDGEncoding(particle->GetPdgCode());
+    trackInformation->SetPDGEncoding(track->GetPdgCode());
     secondaryTrack->SetUserInformation(trackInformation);
 
     // Add track as a secondary
