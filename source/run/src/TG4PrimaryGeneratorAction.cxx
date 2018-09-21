@@ -111,8 +111,8 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
     // will be transformed to G4 objects
 
     // Pass this particle Id (in the VMC stack) to Track manager
-    trackManager->AddPrimaryParticleId(track->Id());
-    G4cout << "Add track with ID " << track->Id() << " to GEANT4 stack" << G4endl;
+    trackManager->NotifyOnNewVMCTrack(track);
+    //G4cout << "Add track with ID " << track->Id() << " to GEANT4 stack" << G4endl;
     // Get particle definition from TG4ParticlesManager
     //
     G4ParticleDefinition* particleDefinition
@@ -167,7 +167,7 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
     if ( G4IonTable::IsIon(particleDefinition) &&
          particleDefinition->GetParticleName() != "proton" ) {
       // Get dynamic charge defined by user
-      TG4UserIon* userIon = particlesManager->GetUserIon(particle->GetName(), false);
+      TG4UserIon* userIon = particlesManager->GetUserIon(track->GetName(), false);
       if ( userIon ) charge = userIon->GetQ() * eplus;
     }
     primaryParticle->SetCharge(charge);

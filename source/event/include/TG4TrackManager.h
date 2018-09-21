@@ -21,14 +21,21 @@
 #include <G4UserTrackingAction.hh>
 #include <G4TrackVector.hh>
 
+#ifdef USE_G4ROOT
+#include "TG4RootNavMgr.h";
+#endif
+
 class TG4TrackInformation;
 class TG4StackPopper;
 
 class TMCQueue;
+class TTrack;
+class TMCStackManager;
 
 class G4Track;
 class G4PrimaryVertex;
 class G4PrimaryParticle;
+
 
 /// \ingroup event
 /// \brief The class for storing G4 tracks in VMC sack
@@ -52,6 +59,7 @@ class TG4TrackManager : public TG4Verbose
     // methods
     void  LateInitialize();
     void  AddPrimaryParticleId(G4int id);
+    void  NotifyOnNewVMCTrack(const TTrack* track);
     G4int SetTrackInformation(const G4Track* aTrack, G4bool overWrite = false);
     void  SetParentToTrackInformation(const G4Track* aTrack);
     void  SetBackPDGLifetime(const G4Track* aTrack);
@@ -68,6 +76,7 @@ class TG4TrackManager : public TG4Verbose
     void SetSaveDynamicCharge(G4bool saveDynamicCharge);
     void SetNofTracks(G4int nofTracks);
     void SetG4TrackingManager(G4TrackingManager* trackingManager);
+    void NotifyNavigator();
     void ResetPrimaryParticleIds();
 
     // get methods
@@ -101,6 +110,10 @@ class TG4TrackManager : public TG4Verbose
     G4int   fTrackCounter;          ///< tracks counter
     G4int   fCurrentTrackID;        ///< current track ID
     G4int   fNofSavedSecondaries;   ///< number of secondaries already saved
+    TMCStackManager* fMCStackManager; ///< Pointer to the TMCStackManager singleton
+#ifdef USE_G4ROOT
+    TG4RootNavMgr* fRootNavMgr;     ///< Pointer to RootNavMgr
+#endif
 };
 
 
@@ -135,6 +148,13 @@ inline void TG4TrackManager::SetG4TrackingManager(
                        G4TrackingManager* trackingManager) {
   /// Set G4 tracking manager
   fG4TrackingManager = trackingManager;
+}
+
+inline void TG4TrackManager::NotifyNavigator()
+{
+#ifdef USE_G4ROOT
+  fRootNavMgr->SetG4TrackingManager(fG4TrackingManager);
+#endif
 }
 
 inline TG4TrackSaveControl  TG4TrackManager::GetTrackSaveControl() const

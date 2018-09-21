@@ -8,7 +8,7 @@
 //-------------------------------------------------
 
 /// \file TG4SensitiveDetector.cxx
-/// \brief Implementation of the TG4SensitiveDetector class 
+/// \brief Implementation of the TG4SensitiveDetector class
 ///
 /// \author I. Hrivnacova; IPN, Orsay
 
@@ -29,10 +29,10 @@ TG4SensitiveDetector::TG4SensitiveDetector(G4String sdName, G4int mediumID)
     fMediumID(mediumID)
 {
 /// Standard constructor with the specified \em name
-} 
+}
 
 //_____________________________________________________________________________
-TG4SensitiveDetector::~TG4SensitiveDetector() 
+TG4SensitiveDetector::~TG4SensitiveDetector()
 {
 /// Destructor
 }
@@ -42,7 +42,7 @@ TG4SensitiveDetector::~TG4SensitiveDetector()
 //
 
 //_____________________________________________________________________________
-void TG4SensitiveDetector::UserProcessHits(const G4Track* /*track*/, 
+void TG4SensitiveDetector::UserProcessHits(const G4Track* /*track*/,
                                            const G4Step* /*step*/)
 {
 /// Call VMC application stepping function.
@@ -65,13 +65,15 @@ G4bool TG4SensitiveDetector::ProcessHits(G4Step* step, G4TouchableHistory*)
 //_____________________________________________________________________________
 G4bool TG4SensitiveDetector::ProcessHitsOnBoundary(G4Step* step)
 {
-/// Call user defined sensitive detector 
+/// Call user defined sensitive detector
 /// when crossing a geometrical boundary.
 
   // let user sensitive detector process boundary step
-  fStepManager->SetStep(step, kBoundary);
-  fMCApplication->Stepping();
+  // \note This is only done now if the track has not been killed before
+  if(step->GetTrack()->GetTrackStatus() != fStopAndKill) {
+    fStepManager->SetStep(step, kBoundary);
+    fMCApplication->Stepping();
+  }
 
   return true;
 }
-

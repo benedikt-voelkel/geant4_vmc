@@ -29,6 +29,7 @@ class TG4SpecialControlsV2;
 
 class TVirtualMCApplication;
 class TMCQueue;
+class TMCStackManager;
 
 class G4Track;
 
@@ -128,6 +129,9 @@ class TG4TrackingAction : public G4UserTrackingAction,
 
     /// track ID for which the new verbose level is applied
     G4int   fNewVerboseTrackID;
+
+    /// Pointer to the TMCStackManager singleton
+    TMCStackManager* fMCStackManager;
 };
 
 

@@ -29,6 +29,7 @@ class TG4StateManager;
 
 class TVirtualMCApplication;
 class TMCQueue;
+class TMCStackManager;
 
 class G4Event;
 
@@ -88,6 +89,9 @@ class TG4EventAction : public G4UserEventAction,
 
     /// Control for saving random engine status for each event
     G4bool  fSaveRandomStatus;
+
+    /// Pointer to the TMCStackManager singleton.
+    TMCStackManager* fMCStackManager;
 };
 
 // inline methods

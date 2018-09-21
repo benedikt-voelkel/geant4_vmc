@@ -299,7 +299,8 @@ void CEMCConcurrentApplication::GeneratePrimaries()
  Int_t toBeDone = 1;
 
  // Geantino
- Int_t pdg  = 2212;
+ Int_t pdg  = 0;
+ Int_t nPart = 1000;
 
  // Polarization
  Double_t polx = 0.;
@@ -322,17 +323,19 @@ void CEMCConcurrentApplication::GeneratePrimaries()
 
 
  // Add particle to stack
- fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
+ for(Int_t i = 0; i < nPart; i++) {
+   fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
+ }
 
  // Change direction and add particle to stack
-/*
+
  px = 10.;
  py = 0.1;
  pz = 0.;
  fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
-
+/*
  // Change direction and add particle to stack
  px = 1000.;
  py = 0.;
@@ -362,19 +365,17 @@ void CEMCConcurrentApplication::PreTrackConcurrent()
 {
 /// User actions at beginning of each track.
 /// Print info message.
-
-  cout << endl;
+  return;
   // We know our PDG is 0 (geantino), so use this here
   //fCurrTrackId = gGeoManager->AddTrack(fCurrTrackId, 0);
   fCurrTrackId = fMCStackManager->GetCurrentTrackNumber();
-  cout << endl;
-  cout << "Starting track " << fCurrTrackId;
+  //cout << "Starting track " << fCurrTrackId;
   if(fTrackIdToGeoTrackId.find(fCurrTrackId) == fTrackIdToGeoTrackId.end()) {
     fTrackIdToGeoTrackId[fCurrTrackId] = gGeoManager->AddTrack(fCurrTrackId, 0);
-    cout << " (new)";
+    //cout << " (new)";
     fSteps[fCurrTrackId] = 0;
   }
-  cout << endl;
+  //cout << endl;
   fCurrGeoTrackId = fTrackIdToGeoTrackId[fCurrTrackId];
   fSteps[fCurrTrackId]++;
 }
@@ -397,10 +398,10 @@ void CEMCConcurrentApplication::SteppingConcurrent()
   //Info("Stepping", "Stepping in engine %s", currentEngineName);
 
 
-  gGeoManager->GetTrack(fCurrGeoTrackId)->AddPoint(currPosition.X(),
+  /*gGeoManager->GetTrack(fCurrGeoTrackId)->AddPoint(currPosition.X(),
                                                    currPosition.Y(),
                                                    currPosition.Z(),
-                                                   currPosition.T());
+                                                   currPosition.T());*/
   // Count secondarie
   fNSecondaries += fCurrentMCEngine->NSecondaries();
   // Extract current volume information from VMC
@@ -409,19 +410,21 @@ void CEMCConcurrentApplication::SteppingConcurrent()
   // Get spatial information from navigator
   const Double_t* currPointNav = gGeoManager->GetCurrentPoint();
   Int_t volIdGeoMan = gGeoManager->GetCurrentVolume()->GetNumber();
-  cout << "\nPosition VMC (t,x,y,z): " << currPosition.T() << ", "
+  /*cout << "\nPosition VMC (t,x,y,z): " << currPosition.T() << ", "
        << currPosition.X() << " " << currPosition.Y() << " " << currPosition.Z()
-       << " (volName: " << fCurrentMCEngine->CurrentVolName() << ", id, copyNo: "
+       << "\nMomentum (E,px,py,pz): " << currMomentum.E() << ", "
+       << currMomentum.Px() << ", " << currMomentum.Py() << ", " << currMomentum.Pz()
+       << "\ntrackID: " << fCurrTrackId << ", PDGID: "
+       << fCurrentMCEngine->TrackPid()
+       << "\n(volName: " << fCurrentMCEngine->CurrentVolName() << ", id, copyNo: "
        << volID << ", " << copyNo << ")"
        << "\nPosition navigator (x,y,z): " << currPointNav[0] << ", "
        << currPointNav[1] << ", " << currPointNav[2]
-       << " (path nav: " << gGeoManager->GetPath() << ", volid: " << volIdGeoMan << ")" << endl;
+       << " (path nav: " << gGeoManager->GetPath() << ", volid: " << volIdGeoMan << ")" << endl;*/
        /*
-  cout << currentEngineName << ", trackID: " << fCurrTrackId << ", PDGID: "
-       << fCurrentMCEngine->TrackPid()
+  cout
 
-      << ", Momentum (E, px, py, pz): " << currMomentum.E() << ", "
-      << currMomentum.Px() << ", " << currMomentum.Py() << ", " << currMomentum.Pz()
+
       << ", #secondaries: " << fCurrentMCEngine->NSecondaries()
       << endl;
 

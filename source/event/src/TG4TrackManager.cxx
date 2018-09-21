@@ -26,6 +26,7 @@
 #include <TVirtualMC.h>
 #include <TVirtualMCApplication.h>
 #include <TMCStackManager.h>
+#include <TTrack.h>
 
 #include <G4TrackVector.hh>
 #include <G4TrackingManager.hh>
@@ -47,7 +48,8 @@ TG4TrackManager::TG4TrackManager()
     fSaveDynamicCharge(false),
     fTrackCounter(0),
     fCurrentTrackID(0),
-    fNofSavedSecondaries(0)
+    fNofSavedSecondaries(0),
+    fMCStackManager(TMCStackManager::Instance())
 {
 /// Default constructor
 
@@ -56,6 +58,10 @@ TG4TrackManager::TG4TrackManager()
       "TG4TrackManager", "TG4TrackManager",
       "Cannot create two instances of singleton.");
   }
+#ifdef USE_G4ROOT
+  // \note \todo Make sure the TG4RootNavigator is instantiated at this point.
+  fRootNavMgr = TG4RootNavMgr::GetInstance();
+#endif
 
   fgInstance = this;
 }
@@ -89,6 +95,15 @@ void  TG4TrackManager::AddPrimaryParticleId(G4int id)
 /// \note Not exactly, it rather maps the ids to one another
 
   fPrimaryParticleIds.push_back(id);
+}
+
+//_____________________________________________________________________________
+void  TG4TrackManager::NotifyOnNewVMCTrack(const TTrack* track)
+{
+#ifdef USE_G4ROOT
+  fRootNavMgr->SaveGeometryStatus(fPrimaryParticleIds.size()+1, track->GeoStateIndex());
+#endif
+  fPrimaryParticleIds.push_back(track->Id());
 }
 
 //_____________________________________________________________________________
@@ -142,7 +157,7 @@ G4int TG4TrackManager::SetTrackInformation(const G4Track* track, G4bool overWrit
       // the way primaries are popped from the VMC stack
       trackIndex = fPrimaryParticleIds[trackID-1];
       // \note added verbosity
-      G4cout << "Set track information for primary\n";
+      //G4cout << "Set track information for primary\n";
       // Set the VMC track number
       trackInfo->SetTrackParticleID(trackIndex);
     }
@@ -154,14 +169,14 @@ G4int TG4TrackManager::SetTrackInformation(const G4Track* track, G4bool overWrit
             // use own counter for setting track index
     }
 
-    G4cout << "\tG4 internal trackID: " << trackID << " (paren: " << parentID << " )\n"
-           << "\tVMC stack trackID: " << trackIndex << G4endl;
+    //G4cout << "\tG4 internal trackID: " << trackID << " (paren: " << parentID << " )\n"
+      //     << "\tVMC stack trackID: " << trackIndex << G4endl;
     if ( VerboseLevel() > 1 )
       G4cout << "TG4TrackManager::SetTrackInformation: setting " << trackIndex << G4endl;
   }
 
   // set current track number
-  //TMCStackManager::Instance()->SetCurrentTrack(trackIndex);
+  //fMCStackManager()->SetCurrentTrack(trackIndex);
   ++fTrackCounter;
 
   return trackIndex;
@@ -305,14 +320,14 @@ G4int TG4TrackManager::TrackToStack(const G4Track* track, G4bool /*overWrite*/)
   G4int ntr;
 #ifdef STACK_WITH_KEEP_FLAG
   // create particle
-  TMCStackManager::Instance()
+  fMCStackManager
     ->PushTrack(0, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                 polX, polY, polZ, -1, mcProcess, ntr, weight, status,
                 overWrite);
         // Experimental code with flagging tracks in stack for overwrite;
         // not yet available in distribution
 #else
-  TMCStackManager::Instance()
+  fMCStackManager
     ->PushTrack(0, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                 polX, polY, polZ, -1, mcProcess, ntr, weight, status);
 #endif
@@ -370,7 +385,7 @@ void TG4TrackManager::PrimaryToStack(const G4PrimaryVertex* vertex,
 
   G4int ntr;
   // create particle
-  TMCStackManager::Instance()->PushTrack(1, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
+  fMCStackManager->PushTrack(1, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                       polX, polY, polZ, -1, mcProcess, ntr, weight, status);
 }
 

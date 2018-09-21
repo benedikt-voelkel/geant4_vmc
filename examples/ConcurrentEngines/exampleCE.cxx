@@ -18,10 +18,10 @@
 /// \author I. Hrivnacova; IPN, Orsay
 
 #include <iostream>
-//#include <functional>
+#include <cstdlib>
 
 #include "TMCManager.h"
-#include "TParticle.h"
+#include "TTrack.h"
 #include "TMCStackManager.h"
 #include "TGeoNode.h"
 #include "TGeoManager.h"
@@ -38,6 +38,8 @@
 #include "TThread.h"
 #include "TInterpreter.h"
 
+#include "TStopwatch.h"
+
 //------------------------------------------------------------------------------
 // Print a help message
 //------------------------------------------------------------------------------
@@ -49,26 +51,42 @@ void printHelp()
             << "Specify either \"TGeant3\" or \"TGeant4\" as first argument " \
                "to simulate the entire geometry with the specified engine.\n";
   std::cout << "Case (2)\n"
-            << "Specify either \"TGeant3\" or \"TGeant4\" as first argument " \
-               "in which case the everything is simulated using the specified "\
+            << "Specify either \"TGeant3\" or \"TGeant4\" as first and second " \
+               "argument, respectively. If the same engine is chosen twice, " \
+               "an artificial concurrent run is done.\n" \
+               "In any case, everything is simulated using the first "\
                "engine except for the tracker tube which will be simulated by "\
-               "the other engine.\nThe second argument must be \"concurrent\" "\
-               "in that case." << std::endl;
+               "the other engine." << std::endl;
 }
 
 
 //------------------------------------------------------------------------------
 // Run TGeant3TGeo and TGeant4 concurrently
 //------------------------------------------------------------------------------
-Int_t runConcurrent(const char* firstEngineName, int argc, char** argv)
+Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
+                    const char* secondEngineName,
+                    int argc, char** argv)
 {
-
+  Info("runConcurrent", "Run concurrent mode");
+  Bool_t simulateG3 = kFALSE;
+  Bool_t simulateG4 = kFALSE;
   // Only accept TGeant3 or TGeant4 as engine names, no default/fallback
-  if(strcmp(firstEngineName, "TGeant3") != 0 &&
-     strcmp(firstEngineName, "TGeant4") != 0) {
-    Error("runSingle", "Engine name %s unknown. Please choose between \
-                        \"TGeant\"3 and \"TGeant4\".", firstEngineName);
+  if((strcmp(firstEngineName, "TGeant3") != 0 &&
+     strcmp(firstEngineName, "TGeant4") != 0) ||
+     (strcmp(secondEngineName, "TGeant3") != 0 &&
+     strcmp(secondEngineName, "TGeant4") != 0)) {
+    Error("runConcurrent", "Engine name unknown. Please choose between \
+                        \"TGeant\"3 and \"TGeant4\".");
     return 1;
+  }
+  if(strcmp(firstEngineName, "TGeant4") == 0 ||
+     strcmp(secondEngineName, "TGeant4") == 0) {
+    simulateG4 = kTRUE;
+  }
+  if(strcmp(firstEngineName, "TGeant3") == 0 ||
+     strcmp(secondEngineName, "TGeant3") == 0) {
+
+    simulateG3 = kTRUE;
   }
   Info("runConcurrent", "Instantiate MC application for concurrent engine run");
   CEMCConcurrentApplication* appl
@@ -77,36 +95,60 @@ Int_t runConcurrent(const char* firstEngineName, int argc, char** argv)
   Info("runConcurrent", "Construct the detector geometry");
   appl->ConstructUserGeometry();
 
-  // Use this later for some further demonstration
+  //
+  // Declare some variables used later.
+  //
   TVirtualMC* mc = nullptr;
 
-  Info("runConcurrent", "Setup Geant4 VMC");
-  // Run configuration for TGeant4 with the geometry construction mode
-  TG4RunConfiguration* runConfiguration = new TG4RunConfiguration("geomRoot");
+  TG4RunConfiguration* runConfiguration;
+  TGeant4* geant4;
+  TGeant3* geant3;
+  TVirtualMC* firstEngine;
+  TVirtualMC* secondEngine;
 
-  // TGeant4
-  TGeant4* geant4 = new TGeant4("TGeant4", "", runConfiguration, argc, argv);
+  if(simulateG4) {
 
-  // Customise Geant4 setting
-  // (verbose level, global range cut, ..)
-  // geant4->ProcessGeantMacro("g4config.in");
-  geant4->ProcessGeantCommand("/mcVerbose/all 1");
+    Info("runConcurrent", "Setup Geant4 VMC");
+    // Run configuration for TGeant4 with the geometry construction mode
+    runConfiguration = new TG4RunConfiguration("geomRoot");
 
-  // Demonstrate how the TMCManager can be used to get the current engine
-  mc = TMCManager::GetMC();
-  Info("runConcurrent", "VMC %s was set up", mc->GetName());
+    // TGeant4
+    geant4 = new TGeant4("TGeant4", "", runConfiguration, argc, argv);
 
+    // Customise Geant4 setting
+    // (verbose level, global range cut, ..)
+    // geant4->ProcessGeantMacro("g4config.in");
+    geant4->ProcessGeantCommand("/mcVerbose/all 0");
+    // Demonstrate how the TMCManager can be used to get the current engine
+    mc = TMCManager::GetMC();
+    Info("runConcurrent", "VMC %s was set up", mc->GetName());
+    if(strcmp(firstEngineName, "TGeant4") == 0) {
+      firstEngine = geant4;
+    }
+    if(strcmp(secondEngineName, "TGeant4") == 0) {
+      secondEngine = geant4;
+    }
+  }
 
-  Info("runConcurrent", "Setup Geant3 VMC");
+  if(simulateG3) {
 
-  TGeant3* geant3 = new TGeant3TGeo("C++ Interface to Geant3");
-  geant3->SetHADR(0);
+    Info("runConcurrent", "Setup Geant3 VMC");
 
-  // Demonstrate how the TMCManager can be used to get the current engine which
-  // has now changed to TGeant3TGeo
-  mc = TMCManager::GetMC();
-  std::cout << mc->GetName() << std::endl;
-  Info("runConcurrent", "VMC %s was set up", mc->GetName());
+    TGeant3* geant3 = new TGeant3TGeo("C++ Interface to Geant3");
+    geant3->SetHADR(0);
+
+    // Demonstrate how the TMCManager can be used to get the current engine which
+    // has now changed to TGeant3TGeo
+    mc = TMCManager::GetMC();
+    std::cout << mc->GetName() << std::endl;
+    Info("runConcurrent", "VMC %s was set up", mc->GetName());
+    if(strcmp(firstEngineName, "TGeant3") == 0) {
+      firstEngine = geant3;
+    }
+    if(strcmp(secondEngineName, "TGeant3") == 0) {
+      secondEngine = geant3;
+    }
+  }
 
   // Now prepare to make decisions how the engines will be used concurrently
   //
@@ -123,64 +165,105 @@ Int_t runConcurrent(const char* firstEngineName, int argc, char** argv)
   //
   // This function is used to decide to which engine a track (aka TParticle),
   // which has not been transported yet, will be forwarded.
-  TVirtualMC* firstEngine;
-  TVirtualMC* secondEngine;
-  if(strcmp(firstEngineName, "TGeant3") == 0) {
-    firstEngine = geant3;
-    secondEngine = geant4;
-  } else {
-    firstEngine = geant4;
-    secondEngine = geant3;
-  }
 
-  TMCStackManager::Instance()->RegisterSpecifyEngineForTrack(
-   [firstEngine, secondEngine, volIdChange]
-   (TParticle* track, TVirtualMC*& targetMC)->Bool_t
-   {
-     Int_t volId;
-     // Default is GEANT3
-     targetMC = firstEngine;
-     TGeoNode* node = gGeoManager->FindNode(track->Vx(), track->Vy(), track->Vz());
-     if(node) {
-       volId = node->GetVolume()->GetNumber();
-       if(volId == volIdChange) {
-         targetMC = secondEngine;
+  if(strcmp(firstEngineName, secondEngineName) == 0) {
+    TMCStackManager::Instance()->RegisterSpecifyEngineForTrack(
+     [firstEngine]
+     (TTrack* track, TVirtualMC*& targetMC)
+     {
+       targetMC = firstEngine;
+     }
+    );
+  } else {
+    TMCStackManager::Instance()->RegisterSpecifyEngineForTrack(
+     [firstEngine, secondEngine, volIdChange]
+     (TTrack* track, TVirtualMC*& targetMC)
+     {
+       Int_t volId;
+       // Default is GEANT3
+       targetMC = firstEngine;
+       TGeoNode* node = gGeoManager->FindNode(track->Vx(), track->Vy(), track->Vz());
+       if(node) {
+         volId = node->GetVolume()->GetNumber();
+         if(volId == volIdChange) {
+           targetMC = secondEngine;
+         }
        }
      }
-     return kTRUE;
-   }
-  );
+    );
+  }
+  // Need to keep track of former volume and track id to properly handle the
+  // artificial "change between the same" engine.
+  Int_t formerVolId = -1;
+  Int_t formerTrackId = -1;
+  Bool_t volChanged = kFALSE;
   // This function is invoked in each step to decide whether a track should be
   // moved to another engine.
-  TMCStackManager::Instance()->RegisterSuggestTrackForMoving(
-   [firstEngine, secondEngine, volIdChange]
-   (TVirtualMC* currentMC, TVirtualMC*& targetMC)->Bool_t
-   {
-
-     //Int_t copyNo;
-     //Int_t volId = currentMC->CurrentVolID(copyNo);
-     Int_t volId = gGeoManager->GetCurrentVolume()->GetNumber();
-     if(!currentMC->IsTrackEntering()) {
-       return kFALSE;
+  if(strcmp(firstEngineName, secondEngineName) == 0) {
+    TMCStackManager::Instance()->RegisterSuggestTrackForMoving(
+     [volChanged, volIdChange, formerVolId, formerTrackId, firstEngine]
+     (TVirtualMC* currentMC, TVirtualMC*& targetMC) mutable
+     {
+       //Info("RegisterSuggestTrackForMoving", "volume change same engine, former vol id: %i, former track id: %i", formerVolId, formerTrackId);
+       Int_t volId = gGeoManager->GetCurrentVolume()->GetNumber();
+       Int_t trackId = TMCStackManager::Instance()->GetCurrentTrackNumber();
+       // Same volume id or new track, don't change engine
+       if(volId == formerVolId || trackId != formerTrackId) {
+         formerTrackId = trackId;
+         formerVolId = volId;
+         volChanged = kFALSE;
+         return;
+       }
+       // Volume id has changed so check if the current is the one where engine
+       // should be changed. Also it has to be the same track as before because
+       // that means that this track crossed a volume boundary.
+       if(volId == volIdChange && trackId == formerTrackId && !volChanged) {
+         targetMC = firstEngine;
+         formerVolId = volId;
+         volChanged = kTRUE;
+         return;
+       }
+       // Volume id has changed and the former one was
+       if(formerVolId == volIdChange && trackId == formerTrackId && !volChanged) {
+         volChanged = kTRUE;
+         targetMC = firstEngine;
+         formerVolId = volId;
+         return;
+       }
+       formerVolId = volId;
+       formerTrackId = trackId;
+       volChanged = kFALSE;
      }
-     if(volId == volIdChange && currentMC != secondEngine) {
-       targetMC = secondEngine;
-       return kTRUE;
-       // If secondEngine is already active nothing to do
-     } else {
-       return kFALSE;
+    );
+  } else {
+    TMCStackManager::Instance()->RegisterSuggestTrackForMoving(
+     [firstEngine, secondEngine, volIdChange]
+     (TVirtualMC* currentMC, TVirtualMC*& targetMC)
+     {
+       //Info("RegisterSuggestTrackForMoving", "volume change different engine");
+       Int_t volId = gGeoManager->GetCurrentVolume()->GetNumber();
+       if(volId == volIdChange) {
+         if(currentMC == secondEngine) {
+           return;
+         } else {
+           targetMC = secondEngine;
+           return;
+         }
+       }
+       targetMC = firstEngine;
      }
-     targetMC = firstEngine;
-     return kTRUE;
-   }
-  );
-
+    );
+  }
   // After all preparation steps are done, the application can be run just like
   // the following. Note, that CEMCApplication::Run(Int_t nofEvents) is not
   // inherited from TVirtualMCConcurrentApplication.
-  appl->Run(1);
+  TStopwatch timer;
+  appl->Run(nEvents);
+  timer.Stop();
+  timer.Print();
   // Print some status information.
   appl->PrintStatus();
+  TMCStackManager::Instance()->Print();
   // The geometry is exported to a ROOT file. The tracks are saved there as well
   // and to have everything in one canvas just attach the created file
   // "CE_geometry.root" to a ROOT session and run
@@ -189,7 +272,7 @@ Int_t runConcurrent(const char* firstEngineName, int argc, char** argv)
   // 3) gGeoManager->DrawTracks()
   // Note, that CEMCApplication::ExportGeometry() is not inherited from
   // TVirtualMCConcurrentApplication.
-  appl->ExportGeometry();
+  //appl->ExportGeometry();
 
   return 0;
 
@@ -198,7 +281,7 @@ Int_t runConcurrent(const char* firstEngineName, int argc, char** argv)
 //------------------------------------------------------------------------------
 // Run either TGeant3TGeo or TGeant4
 //------------------------------------------------------------------------------
-Int_t runSingle(const char* engineName, int argc, char** argv)
+Int_t runSingle(Int_t nEvents, const char* engineName, int argc, char** argv)
 {
   // Only accept TGeant3 or TGeant4 as engine names, no default/fallback
   if(strcmp(engineName, "TGeant3") != 0 && strcmp(engineName, "TGeant4") != 0) {
@@ -226,7 +309,7 @@ Int_t runSingle(const char* engineName, int argc, char** argv)
     // Customise Geant4 setting
     // (verbose level, global range cut, ..)
     // geant4->ProcessGeantMacro("g4config.in");
-    geant4->ProcessGeantCommand("/mcVerbose/all 1");
+    geant4->ProcessGeantCommand("/mcVerbose/all 0");
   } else {
     Info("runSingle", "Setup Geant3 VMC");
     TGeant3* geant3 = new TGeant3TGeo("C++ Interface to Geant3");
@@ -242,9 +325,13 @@ Int_t runSingle(const char* engineName, int argc, char** argv)
   // After all preparation steps are done, the application can be run just like
   // the following. Note, that CEMCApplication::Run(Int_t nofEvents) is not
   // inherited from TVirtualMCConcurrentApplication.
-  appl->Run(1);
+  TStopwatch timer;
+  appl->Run(nEvents);
+  timer.Stop();
+  timer.Print();
   // Print some status information.
   appl->PrintStatus();
+  TMCStackManager::Instance()->Print();
   // The geometry is exported to a ROOT file. The tracks are saved there as well
   // and to have everything in one canvas just attach the created file
   // "CE_geometry.root" to a ROOT session and run
@@ -253,7 +340,6 @@ Int_t runSingle(const char* engineName, int argc, char** argv)
   // 3) gGeoManager->DrawTracks()
   // Note, that CEMCApplication::ExportGeometry() is not inherited from
   // TVirtualMCConcurrentApplication.
-  appl->ExportGeometry();
 
   return 0;
 }
@@ -272,12 +358,13 @@ int main(int argc, char** argv)
 #endif
 
 //------------------------------------------------------------------------------
-  // Name of the engine can be chosen. It has to be either TGeant3, TGeant4. If
-  // it is left blank, the concurrent of TGeant3 and TGeant4 will be initiated.
-  const char* engineToBeUsed;
 
+  // User arguments
+  // 1: number of events
+  // 2: first engines
+  // 3: second engine (optional)
   // No user argument
-  if(argc < 2) {
+  if(argc < 1 || argc > 4) {
     printHelp();
     return 0;
   }
@@ -291,15 +378,11 @@ int main(int argc, char** argv)
     }
   }
   // 2 arguments given by the user, assume concurrent
-  if(argc > 2) {
-    if(strcmp(argv[2], "concurrent") != 0) {
-      printHelp();
-      return 1;
-    }
-    return runConcurrent(argv[1], argc, argv);
+  if(argc == 4) {
+    return runConcurrent(atoi(argv[1]), argv[2], argv[3], argc, argv);
   }
-  // No concurrent assume first argument to be the engine name
-  return runSingle(argv[1], argc, argv);
+  // Just one user argument
+  return runSingle(atoi(argv[1]), argv[2], argc, argv);
 //------------------------------------------------------------------------------
 
 }

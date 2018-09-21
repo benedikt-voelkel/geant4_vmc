@@ -53,7 +53,8 @@ TG4TrackingAction::TG4TrackingAction()
     fTrackSaveControl(kDoNotSave),
     fOverwriteLastTrack(false),
     fNewVerboseLevel(0),
-    fNewVerboseTrackID(-1)
+    fNewVerboseTrackID(-1),
+    fMCStackManager(TMCStackManager::Instance())
 {
 /// Default constructor
 
@@ -153,6 +154,9 @@ void TG4TrackingAction::PrepareNewEvent()
 
   fTrackManager->SetG4TrackingManager(fpTrackingManager);
   fTrackManager->ResetPrimaryParticleIds();
+  // Notify the current navigator to enable for the possibility of restoring
+  // geometry states attached to VMC tracks.
+  fTrackManager->NotifyNavigator();
 
   if ( fTrackManager->GetTrackSaveControl() != kDoNotSave )
     fTrackManager->SetNofTracks(0);
@@ -219,7 +223,7 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
 
     // save track in stack
     if ( fTrackSaveControl == kSaveInPreTrack ) {
-      G4cout << "Save secondary in pre track" << G4endl;
+      //G4cout << "Save secondary in pre track" << G4endl;
       // Get the track number the VMC stack has assigned
       trackId = fTrackManager->TrackToStack(track, fOverwriteLastTrack);
       // Update the VMC track number
@@ -232,7 +236,7 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
   // \note The weird thing here is that the VMC is set to a track number it
   // actually does not have the corresponding track to, namely in case
   // fTrackSaveControl == kDoNotSave
-  TMCStackManager::Instance()->SetCurrentTrack(trackId);
+  fMCStackManager->SetCurrentTrack(trackId);
 
 
   // verbose

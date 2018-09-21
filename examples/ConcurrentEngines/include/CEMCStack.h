@@ -43,8 +43,8 @@ class CEMCStack : public TVirtualMCStack
 		              Double_t polx, Double_t poly, Double_t polz,
 		              TMCProcess mech, Int_t& ntr, Double_t weight,
 		              Int_t is) ;
-    virtual TParticle* PopNextTrack(Int_t& itrack);
-    virtual TParticle* PopPrimaryForTracking(Int_t i);
+    virtual TTrack* PopNextTrack(Int_t& itrack);
+    virtual TTrack* PopPrimaryForTracking(Int_t i);
 
     // set methods
     virtual void  SetCurrentTrack(Int_t itrack);
@@ -53,18 +53,18 @@ class CEMCStack : public TVirtualMCStack
     virtual Int_t  GetNtrackToDo() const;
     virtual Int_t  GetNtrack() const;
     virtual Int_t  GetNprimary() const;
-    virtual TParticle* GetCurrentTrack() const;
+    virtual TTrack* GetCurrentTrack() const;
     virtual Int_t  GetCurrentTrackNumber() const;
     virtual Int_t  GetCurrentParentTrackNumber() const;
 
 
   private:
     // methods
-    CEParticle* GetParticle(Int_t id) const;
+    TTrack* GetTrack(Int_t id) const;
 
     // data members
-    std::stack<CEParticle*>    fStack;        //!< The stack of particles (transient)
-    TObjArray*                 fParticles;    ///< The array of particle (persistent)
+    std::stack<TTrack*>        fStack;        //!< The stack of particles (transient)
+    TObjArray*                 fTracks;    ///< The array of particle (persistent)
     Int_t                      fCurrentTrack; ///< The current track number
     Int_t                      fNPrimary;     ///< The number of primaries
 
