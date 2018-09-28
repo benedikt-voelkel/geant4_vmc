@@ -83,6 +83,8 @@ public:
    /// Initialisation steps which are only possible when the G4EventManager
    /// and the G4TrackingManager have been instantiated.
    void SetG4TrackingManager(G4TrackingManager* trackingManager);
+   /// Notify on new event
+   void PrepareNewEvent();
 
    //ClassDef(TG4RootNavMgr,0)  // Class crreating a G4Navigator based on ROOT geometry
 };

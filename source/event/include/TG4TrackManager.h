@@ -59,6 +59,7 @@ class TG4TrackManager : public TG4Verbose
     // methods
     void  LateInitialize();
     void  AddPrimaryParticleId(G4int id);
+    void  ExpectNewPrimaries(G4int nOfPrimaries);
     void  NotifyOnNewVMCTrack(const TTrack* track);
     G4int SetTrackInformation(const G4Track* aTrack, G4bool overWrite = false);
     void  SetParentToTrackInformation(const G4Track* aTrack);
@@ -154,6 +155,7 @@ inline void TG4TrackManager::NotifyNavigator()
 {
 #ifdef USE_G4ROOT
   fRootNavMgr->SetG4TrackingManager(fG4TrackingManager);
+  //fRootNavMgr->PrepareNewEvent();
 #endif
 }
 

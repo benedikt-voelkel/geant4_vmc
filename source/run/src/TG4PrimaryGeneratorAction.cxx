@@ -90,8 +90,10 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
   G4PrimaryVertex* previousVertex = 0;
   G4ThreeVector previousPosition = G4ThreeVector();
   G4double previousTime = 0.;
+  // To reserve/resize and therefore prepare lists/vectors with proper size.
+  trackManager->ExpectNewPrimaries(nofTracks);
 
-  TTrack* track = nullptr;
+  const TTrack* track = nullptr;
   // Pop particles until the queue is empty and fill a G4Event
   // \note Don't use the following implementation
   //

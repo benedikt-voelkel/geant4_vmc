@@ -23,6 +23,7 @@
 #include <TVirtualMC.h>
 #include <TMCQueue.h>
 #include <TTrack.h>
+#include <TMCStackManager.h>
 
 
 G4ThreadLocal TG4StackPopper* TG4StackPopper::fgInstance = 0;
@@ -91,8 +92,10 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
 
   if ( fMCQueue->GetNtrack() == 0 )
     return &aParticleChange;
-  G4cout << "Stackpopper" << G4endl;
-  //fMCStack->SetCurrentTrack(currentTrackId);
+
+  // \note Caching the current track number is not needed anymore since popping
+  //       from queue does not change anything on the current track index
+  //Int_t currentTrackId = TMCStackManager::Instance()->GetCurrentTrackNumber();
   Int_t nofTracksToPop = fMCQueue->GetNtrack();
   aParticleChange.SetNumberOfSecondaries(
                       aParticleChange.GetNumberOfSecondaries()+nofTracksToPop);
@@ -100,7 +103,7 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
   for (G4int i=0; i<nofTracksToPop; ++i) {
 
     // Pop particle from the stack
-    TTrack* track = fMCQueue->PopNextTrack();
+    const TTrack* track = fMCQueue->PopNextTrack();
 
     if (!track) {
       TG4Globals::Exception(
@@ -147,7 +150,9 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
 
   // Set back current track number in the track
   // (as stack may have changed it with popping particles)
-
+  // \note this is not needed anymore since popping from queue does not change
+  //       anything on the current track index
+  // TMCStackManager::Instance()->SetCurrentTrackNumber(currentTrackId);
   // Set the kept track status if in exclusive step
   if ( fDoExclusiveStep ) {
     aParticleChange.ProposeTrackStatus(fTrackStatus);

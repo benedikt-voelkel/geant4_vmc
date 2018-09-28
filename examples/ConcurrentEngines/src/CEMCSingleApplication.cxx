@@ -289,9 +289,11 @@ void CEMCSingleApplication::GeneratePrimaries()
  Int_t toBeDone = 1;
 
  // Geantino
-
- Int_t pdg  = 0;
- Int_t nPart = 1000;
+ //Int_t pdg  = 0;
+ // Proton
+ //Int_t pdg  = 2212;
+ // Electron
+ Int_t pdg  = 11;
  // Polarization
  Double_t polx = 0.;
  Double_t poly = 0.;
@@ -313,19 +315,17 @@ void CEMCSingleApplication::GeneratePrimaries()
 
 
  // Add particle to stack
- for(Int_t i = 0; i < nPart; i++) {
    fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
- }
 
  // Change direction and add particle to stack
-
+/*
  px = 10.;
  py = 0.1;
  pz = 0.;
  fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
-/*
+
  // Change direction and add particle to stack
  px = 1000.;
  py = 0.;

@@ -15,6 +15,8 @@
 /// \author A. Gheata; CERN
 
 #include "TGeoManager.h"
+#include "TGeoCacheManual.h"
+#include "TGeoBranchArray.h"
 
 #include "TG4RootDetectorConstruction.h"
 #include "TG4RootNavigator.h"
@@ -47,7 +49,8 @@ TG4RootNavigator::TG4RootNavigator()
                   fSafetyOrig(),
                   fLastSafety(0),
                   fNzeroSteps(0),
-                  fG4TrackingManager(0)
+                  fG4TrackingManager(0),
+                  fGeoStateCache(TGeoCacheManual::Instance())
 {
 /// Dummy ctor.
 }
@@ -64,7 +67,8 @@ TG4RootNavigator::TG4RootNavigator(TG4RootDetectorConstruction *dc)
                   fSafetyOrig(),
                   fLastSafety(0),
                   fNzeroSteps(0),
-                  fG4TrackingManager(0)
+                  fG4TrackingManager(0),
+                  fGeoStateCache(TGeoCacheManual::Instance())
 {
 /// Default ctor.
    fSafetyOrig.set(kInfinity, kInfinity, kInfinity);
@@ -349,15 +353,15 @@ TG4RootNavigator::LocateGlobalPointAndSetup(const G4ThreeVector& globalPoint,
    // Flag if geometry state was recovered.
    Bool_t isGeoStateRestored = kFALSE;
 
-   if(fG4TrackingManager) {
-     // Get potential geometry state associated to the current G4Track
-     Int_t currentTrackId = fG4TrackingManager->GetTrack()->GetTrackID();
-     //G4cout << "Try to recover geometry state for G4Track " << currentTrackId << G4endl;
+   if(fG4TrackingManager && !fTrackIdGeoStateIndexMap.empty()) {
      // Check whether this track was registered to have a stored geometry status
-     std::map<Int_t, Int_t>::iterator it = fTrackIdGeoStateIndexMap.find(currentTrackId);
-     if(it != fTrackIdGeoStateIndexMap.end() && it->second > -1) {
-       fNavigator->PopPoint(it->second);
-       // Now remove this index since it has been used
+     std::unordered_map<Int_t, Int_t>::iterator it =
+                fTrackIdGeoStateIndexMap.find(fG4TrackingManager->GetTrack()->GetTrackID());
+     if(it != fTrackIdGeoStateIndexMap.end()) {
+       fGeoStateCache->GetGeoState(it->second)->UpdateNavigator(fNavigator);
+       //G4cout << "Update navigator with geo state " << it->second << G4endl;
+       // Now remove this since it has been used and should not randomly be
+       // associated with another track.
        fTrackIdGeoStateIndexMap.erase(it);
        isGeoStateRestored = kTRUE;
        //G4cout << "Geometry state recovered for G4Track " << currentTrackId << G4endl;
@@ -384,7 +388,7 @@ TG4RootNavigator::LocateGlobalPointAndSetup(const G4ThreeVector& globalPoint,
          G4cout << "   IN VOLUME   " << "entering/exiting = "<< fStepEntering << "/" << fStepExiting << G4endl;
 #endif
    }
-   if ((!ignoreDirection || onBoundary )&& pGlobalDirection && !isGeoStateRestored) {
+   if ((!ignoreDirection || onBoundary )&& pGlobalDirection) {
       fNavigator->SetCurrentDirection(pGlobalDirection->x(), pGlobalDirection->y(), pGlobalDirection->z());
    }
 
@@ -584,4 +588,9 @@ void TG4RootNavigator::SaveGeometryStatus(Int_t G4TrackId, Int_t geoStateIndex)
 void TG4RootNavigator::SetG4TrackingManager(G4TrackingManager* trackingManager)
 {
   fG4TrackingManager = trackingManager;
+}
+
+void TG4RootNavigator::PrepareNewEvent()
+{
+  fTrackIdGeoStateIndexMap.clear();
 }

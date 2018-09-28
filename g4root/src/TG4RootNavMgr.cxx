@@ -220,3 +220,8 @@ void TG4RootNavMgr::SetG4TrackingManager(G4TrackingManager* trackingManager)
 {
   fNavigator->SetG4TrackingManager(trackingManager);
 }
+
+void TG4RootNavMgr::PrepareNewEvent()
+{
+  fNavigator->PrepareNewEvent();
+}

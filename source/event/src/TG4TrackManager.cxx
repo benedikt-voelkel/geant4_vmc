@@ -98,10 +98,18 @@ void  TG4TrackManager::AddPrimaryParticleId(G4int id)
 }
 
 //_____________________________________________________________________________
+void  TG4TrackManager::ExpectNewPrimaries(G4int nOfPrimaries)
+{
+  fPrimaryParticleIds.reserve(fPrimaryParticleIds.size() + nOfPrimaries);
+}
+
+//_____________________________________________________________________________
 void  TG4TrackManager::NotifyOnNewVMCTrack(const TTrack* track)
 {
 #ifdef USE_G4ROOT
-  fRootNavMgr->SaveGeometryStatus(fPrimaryParticleIds.size()+1, track->GeoStateIndex());
+  if(track->GeoStateIndex() > -1) {
+    fRootNavMgr->SaveGeometryStatus(fPrimaryParticleIds.size() + 1, track->GeoStateIndex());
+  }
 #endif
   fPrimaryParticleIds.push_back(track->Id());
 }
@@ -430,6 +438,7 @@ void TG4TrackManager::SaveSecondaries(const G4Track* track,
 //_____________________________________________________________________________
 void TG4TrackManager::ResetPrimaryParticleIds()
 {
+
 /// Clear the vector with the VMC stack primary particle Ids
 
   fPrimaryParticleIds.clear();

@@ -20,5 +20,10 @@ A slightly modified version of `ROOT` and `GEANT3` is required and can be obtain
 * `ROOT`: https://github.com/benedikt-voelkel/root/tree/v6-12-06-multi-engines
 * `GEANT3`: https://github.com/benedikt-voelkel/geant3/tree/multi-engines
 
-Note, that macros as used in the other examples are disabled at the moment and the only way to run the example is by building and running the executable. Both `-DVMC_Geant4_DIR=$GEANT4_VMC_INSTALL_ROOT/lib64/Geant4VMC-<version>` and `-DGeant3_DIR=$GEANT3_INSTALL_ROOT/lib64/Geant3-<version>` need to be set when building with `cmake`. Further, the path to `Pythia6` might be required by `GEANT3` which is set via `-DPtyhia6_DIR`. If `GEANT4` was build with `VGM`, the path to these libraries needs to be given as well via `-DVGM_DIR=$VGM_INSTALL_ROOT/lib/VGM-<version>`.
-Finally, the flag `-DVMC_CONCURRENT=ON` is required. Note, that this can be used concurrently with the option `-DVMC_WITH_Geant[3|4]=ON` in which case the ConcurrentEngines example is build and all other examples are built for `GEANT[3|4]`.
+Note,that macros as used in the other examples are disabled at the moment and the only way to run the example is by building and running the executable. Both `-DVMC_Geant4_DIR=$GEANT4_VMC_INSTALL_ROOT/lib64/Geant4VMC-<version>` and `-DGeant3_DIR=$GEANT3_INSTALL_ROOT/lib64/Geant3-<version>` need to be set when building with `cmake`. Further, the path to `Pythia6` might be required by `GEANT3` which is set via `-DPtyhia6_DIR`. If `GEANT4` was build with `VGM`, the path to these libraries needs to be given as well via `-DVGM_DIR=$VGM_INSTALL_ROOT/lib/VGM-<version>`. Finally, the flag `-DVMC_CONCURRENT=ON` is required.
+
+In the `$INSTALLDIR` there is the executable `vmc_exampleCE` which is used as
+```bash
+$> $INSTALLDIR/vmc_exampleCE <numberOfEvents> <engine1> [<engine2>]
+```
+where in each event one 10 GeV electron is shot through the geometry. For the engine one can choose any combination of TGeant3 and TGeant4 and the second engine is optional.

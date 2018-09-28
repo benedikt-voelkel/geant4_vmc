@@ -19,7 +19,7 @@
 
 // For mapping index of geometry state cached in TGeoNavigator to G4Track id.
 // \note \todo Can we use something faster/more efficient than std::map?
-#include <map>
+#include <unordered_map>
 
 #ifndef G4NAVIGATOR_HH
 #include "G4Navigator.hh"
@@ -29,6 +29,7 @@
 
 class TGeoManager;
 class TGeoNavigator;
+class TGeoCacheManual;
 class TGeoNode;
 class TG4RootDetectorConstruction;
 class G4TrackingManager;
@@ -56,9 +57,10 @@ protected:
    Int_t                 fNzeroSteps;      ///< Number of zero steps in ComputeStep
 
    G4TrackingManager* fG4TrackingManager;    ///< Store pointer to G4TrackingManager
-   std::map<Int_t,Int_t> fTrackIdGeoStateIndexMap; ///< Mapping geometry state
+   std::unordered_map<Int_t,Int_t> fTrackIdGeoStateIndexMap; ///< Mapping geometry state
                                                    ///< index cached in TGeoNavigator
                                                    ///< to G4Track id
+    TGeoCacheManual* fGeoStateCache;    ///< Pointer to access cached geo states
 private:
    G4VPhysicalVolume *SynchronizeHistory();
    TGeoNode          *SynchronizeGeoManager();
@@ -125,6 +127,8 @@ public:
     /// Initialisation steps which are only possible when the G4EventManager
     /// and the G4TrackingManager have been instantiated.
     void SetG4TrackingManager(G4TrackingManager* trackingManager);
+    /// Prepare for new event
+    void PrepareNewEvent();
 
 //   ClassDef(TG4RootNavigator,0)  // Class defining a G4Navigator based on ROOT geometry
 };

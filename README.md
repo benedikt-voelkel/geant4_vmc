@@ -5,6 +5,7 @@ Geant4 VMC
 Geant4 VMC implements the Virtual Monte Carlo (VMC) for Geant4, see more: <br/>
 [https://root.cern.ch/vmc](https://root.cern.ch/vmc)
 
+
 It also includes G4Root and MTRoot packages, which are independent from Geant4 VMC and can be build and used stand-alone.
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](http://www.gnu.org/licenses/gpl-2.0)
@@ -18,6 +19,9 @@ To automatically setup everything with all dependencies oen can use [alibuild](h
 ```bash
 aliBuild build concurrent-engines --defaults concurrent-engines
 ```
+### ConcurrentEngines example
+Due to the necessary modifications, all examples but the one demonstrating this development are disabled. Building and running this example is described [here](https://github.com/benedikt-voelkel/geant4_vmc/tree/multi-engines/examples/ConcurrentEngines).
+
 
 ## Files and directories
 

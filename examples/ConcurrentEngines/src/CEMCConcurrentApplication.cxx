@@ -299,8 +299,11 @@ void CEMCConcurrentApplication::GeneratePrimaries()
  Int_t toBeDone = 1;
 
  // Geantino
- Int_t pdg  = 0;
- Int_t nPart = 1000;
+ //Int_t pdg  = 0;
+ // Proton
+ //Int_t pdg  = 2212;
+ // Electron
+ Int_t pdg  = 11;
 
  // Polarization
  Double_t polx = 0.;
@@ -323,19 +326,17 @@ void CEMCConcurrentApplication::GeneratePrimaries()
 
 
  // Add particle to stack
- for(Int_t i = 0; i < nPart; i++) {
-   fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
+ fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
- }
 
  // Change direction and add particle to stack
-
+/*
  px = 10.;
  py = 0.1;
  pz = 0.;
  fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
                   kPPrimary, ntr, 1., 0);
-/*
+
  // Change direction and add particle to stack
  px = 1000.;
  py = 0.;
@@ -365,10 +366,11 @@ void CEMCConcurrentApplication::PreTrackConcurrent()
 {
 /// User actions at beginning of each track.
 /// Print info message.
-  return;
+
   // We know our PDG is 0 (geantino), so use this here
   //fCurrTrackId = gGeoManager->AddTrack(fCurrTrackId, 0);
   fCurrTrackId = fMCStackManager->GetCurrentTrackNumber();
+  return;
   //cout << "Starting track " << fCurrTrackId;
   if(fTrackIdToGeoTrackId.find(fCurrTrackId) == fTrackIdToGeoTrackId.end()) {
     fTrackIdToGeoTrackId[fCurrTrackId] = gGeoManager->AddTrack(fCurrTrackId, 0);
@@ -460,6 +462,8 @@ void CEMCConcurrentApplication::FinishEventConcurrent()
 {
 /// User actions after finishing of an event
 /// Nothing to be done this example
+  fNEventsProcessed++;
+  //Info("FinishEventConcurrent", "Finish event in concurrent mode");
 }
 
 void CEMCConcurrentApplication::Run(Int_t nofEvents)
@@ -474,6 +478,7 @@ void CEMCConcurrentApplication::PrintStatus() const
   cout << "#############################################\n";
   cout << "########## STATUS of MCApplication ##########\n";
   cout << "#############################################\n";
+  cout << "Number of processed events: " << fNEventsProcessed << "\n";
   /*
   cout << "---> Event and track info: \n"
        << "\t# events processed: " << fNEventsProcessed << "\n"

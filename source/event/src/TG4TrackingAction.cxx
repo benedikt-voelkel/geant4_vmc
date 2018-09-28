@@ -223,9 +223,9 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
 
     // save track in stack
     if ( fTrackSaveControl == kSaveInPreTrack ) {
-      //G4cout << "Save secondary in pre track" << G4endl;
       // Get the track number the VMC stack has assigned
       trackId = fTrackManager->TrackToStack(track, fOverwriteLastTrack);
+      //G4cout << "Save secondary with VMC track ID " << trackId << " in pre track" << G4endl;
       // Update the VMC track number
       fTrackManager->GetTrackInformation(track)->SetTrackParticleID(trackId);
 
