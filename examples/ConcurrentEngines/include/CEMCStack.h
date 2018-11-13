@@ -29,6 +29,8 @@
 /// \date 05/04/2002
 /// \author I. Hrivnacova; IPN, Orsay
 
+class TParticle;
+
 class CEMCStack : public TVirtualMCStack
 {
   public:
@@ -37,14 +39,15 @@ class CEMCStack : public TVirtualMCStack
     virtual ~CEMCStack();
 
     // methods
+    virtual void ResetStack();
     virtual void  PushTrack(Int_t toBeDone, Int_t parent, Int_t pdg,
   	              Double_t px, Double_t py, Double_t pz, Double_t e,
   		            Double_t vx, Double_t vy, Double_t vz, Double_t tof,
 		              Double_t polx, Double_t poly, Double_t polz,
 		              TMCProcess mech, Int_t& ntr, Double_t weight,
 		              Int_t is) ;
-    virtual TTrack* PopNextTrack(Int_t& itrack);
-    virtual TTrack* PopPrimaryForTracking(Int_t i);
+    virtual TParticle* PopNextTrack(Int_t& itrack);
+    virtual TParticle* PopPrimaryForTracking(Int_t i);
 
     // set methods
     virtual void  SetCurrentTrack(Int_t itrack);
@@ -53,7 +56,7 @@ class CEMCStack : public TVirtualMCStack
     virtual Int_t  GetNtrackToDo() const;
     virtual Int_t  GetNtrack() const;
     virtual Int_t  GetNprimary() const;
-    virtual TTrack* GetCurrentTrack() const;
+    virtual TParticle* GetCurrentTrack() const;
     virtual Int_t  GetCurrentTrackNumber() const;
     virtual Int_t  GetCurrentParentTrackNumber() const;
 
@@ -63,7 +66,7 @@ class CEMCStack : public TVirtualMCStack
     TTrack* GetTrack(Int_t id) const;
 
     // data members
-    std::stack<TTrack*>        fStack;        //!< The stack of particles (transient)
+    std::stack<TParticle*>     fStack;        //!< The stack of particles (transient)
     TObjArray*                 fTracks;    ///< The array of particle (persistent)
     Int_t                      fCurrentTrack; ///< The current track number
     Int_t                      fNPrimary;     ///< The number of primaries

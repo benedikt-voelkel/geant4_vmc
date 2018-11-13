@@ -20,11 +20,9 @@
 #include <map> // For testing/providing mapping between VMC stack track and TGeoTrack
 
 #include <TVirtualMCApplication.h>
-#include <TVirtualMCStack.h>
 
 class TVirtualMagField;
-class TMCStackManager;
-class TVirtualMC;
+class CEMCStack;
 
 /// \ingroup ConcurrentEngines
 /// \brief Implementation of the TVirtualMCApplication
@@ -63,8 +61,6 @@ class CEMCSingleApplication : public TVirtualMCApplication
     virtual void FinishPrimary() override;
     virtual void FinishEvent() override;
 
-    // methods for tests
-    void SetOldGeometry(Bool_t oldGeometry = kTRUE);
 
   private:
     // methods
@@ -72,10 +68,8 @@ class CEMCSingleApplication : public TVirtualMCApplication
     void ConstructVolumes();
 
     // data members
-    TVirtualMC*       fCurrentMCEngine;          ///< Pointer to current MC engine
     TVirtualMagField* fMagField;                 ///< The magnetic field
-    TMCStackManager*  fMCStackManager;           ///< Store pointer to global TMCStackManager
-    TVirtualMCStack*  fStack;                    ///< VMC stack to push tracks to
+    CEMCStack*        fStack;                    ///< The stack
     Int_t             fImedAr;                   ///< The Argon gas medium Id
     Int_t             fImedAl;                   ///< The Aluminium medium Id
     Int_t             fImedPb;                   ///< The Lead medium Id
@@ -92,7 +86,7 @@ class CEMCSingleApplication : public TVirtualMCApplication
     std::map<Int_t,Int_t> fSteps;                ///< Monitor the number of steps for a given track number
 
 
-  ClassDef(CEMCSingleApplication,1)  //Interface to MonteCarlo application
+  ClassDefOverride(CEMCSingleApplication,1)  //Interface to MonteCarlo application
 };
 
 // inline functions
@@ -102,5 +96,6 @@ inline CEMCSingleApplication* CEMCSingleApplication::Instance()
   /// \return The MC application instance
   return (CEMCSingleApplication*)(TVirtualMCApplication::Instance());
 }
+
 
 #endif //CE_MC_APPLICATION_H

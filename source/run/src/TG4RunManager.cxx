@@ -60,6 +60,7 @@
 #include <TRandom.h>
 #include <TVirtualMCApplication.h>
 #include <TVirtualMC.h>
+#include <TVirtualMCStack.h>
 
 namespace {
 
@@ -459,8 +460,8 @@ void TG4RunManager::CacheMCStack()
   if ( fIsMCStackCached ) return;
 
   // The VMC stack must be set to MC at this stage !!
-  TMCQueue* mcQueue = gMC->GetQueue();
-  if ( ! mcQueue ) {
+  TVirtualMCStack* mcStack = gMC->GetStack();
+  if ( ! mcStack ) {
     TG4Globals::Exception("TG4RunManager", "CacheMCStack",
      "VMC stack is not set");
     return;
@@ -469,12 +470,12 @@ void TG4RunManager::CacheMCStack()
   // Set stack to the event actions if they exists
   // (on worker only if in MT mode)
   if ( GetEventAction() ) {
-    GetEventAction()->SetMCStack(mcQueue);
-    TG4TrackingAction::Instance()->SetMCStack(mcQueue);
-    TG4TrackManager::Instance()->SetMCStack(mcQueue);
+    GetEventAction()->SetMCStack(mcStack);
+    TG4TrackingAction::Instance()->SetMCStack(mcStack);
+    TG4TrackManager::Instance()->SetMCStack(mcStack);
 
     if ( TG4StackPopper::Instance() ) {
-      TG4StackPopper::Instance()->SetMCStack(mcQueue);
+      TG4StackPopper::Instance()->SetMCStack(mcStack);
     }
   }
 
@@ -490,6 +491,8 @@ void TG4RunManager::ProcessEvent(G4int eventId)
     //"TG4RunManager", "ProcessEvent", "Not implemented.");
   // Replay what is done in GEANT4 BeamOn
   if(!fHasRunInitializationOneEvent) {
+    TG4Globals::Warning(
+      "TG4RunManager", "ProcessEvent", "runinit for GEANT4.");
     G4bool cond = fRunManager->ConfirmBeamOnCondition();
     if(!cond) {
       TG4Globals::Warning(

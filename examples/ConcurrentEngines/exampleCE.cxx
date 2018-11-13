@@ -19,8 +19,8 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <chrono>
 
-#include "TMCManager.h"
 #include "TTrack.h"
 #include "TMCStackManager.h"
 #include "TGeoNode.h"
@@ -28,7 +28,7 @@
 #include "TError.h"
 
 #include "CEMCSingleApplication.h"
-#include "CEMCConcurrentApplication.h"
+#include "CEMCMultiApplication.h"
 
 #include "TG4RunConfiguration.h"
 #include "TGeant4.h"
@@ -63,11 +63,11 @@ void printHelp()
 //------------------------------------------------------------------------------
 // Run TGeant3TGeo and TGeant4 concurrently
 //------------------------------------------------------------------------------
-Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
+Int_t runMulti(Int_t nEvents, const char* firstEngineName,
                     const char* secondEngineName,
                     int argc, char** argv)
 {
-  Info("runConcurrent", "Run concurrent mode");
+  Info("runMulti", "Run concurrent mode");
   Bool_t simulateG3 = kFALSE;
   Bool_t simulateG4 = kFALSE;
   // Only accept TGeant3 or TGeant4 as engine names, no default/fallback
@@ -75,7 +75,7 @@ Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
      strcmp(firstEngineName, "TGeant4") != 0) ||
      (strcmp(secondEngineName, "TGeant3") != 0 &&
      strcmp(secondEngineName, "TGeant4") != 0)) {
-    Error("runConcurrent", "Engine name unknown. Please choose between \
+    Error("runMulti", "Engine name unknown. Please choose between \
                         \"TGeant\"3 and \"TGeant4\".");
     return 1;
   }
@@ -88,17 +88,16 @@ Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
 
     simulateG3 = kTRUE;
   }
-  Info("runConcurrent", "Instantiate MC application for concurrent engine run");
-  CEMCConcurrentApplication* appl
-    =  new CEMCConcurrentApplication("ConcurrentApplication", "");
+  Info("runMulti", "Instantiate MC application for concurrent engine run");
+  CEMCMultiApplication* appl
+    =  new CEMCMultiApplication("MultiApplication", "");
 
-  Info("runConcurrent", "Construct the detector geometry");
+  Info("runMulti", "Construct the detector geometry");
   appl->ConstructUserGeometry();
 
   //
   // Declare some variables used later.
   //
-  TVirtualMC* mc = nullptr;
 
   TG4RunConfiguration* runConfiguration;
   TGeant4* geant4;
@@ -108,7 +107,7 @@ Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
 
   if(simulateG4) {
 
-    Info("runConcurrent", "Setup Geant4 VMC");
+    Info("runMulti", "Setup Geant4 VMC");
     // Run configuration for TGeant4 with the geometry construction mode
     runConfiguration = new TG4RunConfiguration("geomRoot");
 
@@ -119,9 +118,7 @@ Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
     // (verbose level, global range cut, ..)
     // geant4->ProcessGeantMacro("g4config.in");
     geant4->ProcessGeantCommand("/mcVerbose/all 0");
-    // Demonstrate how the TMCManager can be used to get the current engine
-    mc = TMCManager::GetMC();
-    Info("runConcurrent", "VMC %s was set up", mc->GetName());
+    Info("runMulti", "VMC %s was set up", geant4->GetName());
     if(strcmp(firstEngineName, "TGeant4") == 0) {
       firstEngine = geant4;
     }
@@ -132,16 +129,12 @@ Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
 
   if(simulateG3) {
 
-    Info("runConcurrent", "Setup Geant3 VMC");
+    Info("runMulti", "Setup Geant3 VMC");
 
     TGeant3* geant3 = new TGeant3TGeo("C++ Interface to Geant3");
     geant3->SetHADR(0);
 
-    // Demonstrate how the TMCManager can be used to get the current engine which
-    // has now changed to TGeant3TGeo
-    mc = TMCManager::GetMC();
-    std::cout << mc->GetName() << std::endl;
-    Info("runConcurrent", "VMC %s was set up", mc->GetName());
+    Info("runMulti", "VMC %s was set up", geant3->GetName());
     if(strcmp(firstEngineName, "TGeant3") == 0) {
       firstEngine = geant3;
     }
@@ -204,6 +197,8 @@ Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
      [volChanged, volIdChange, formerVolId, formerTrackId, firstEngine]
      (TVirtualMC* currentMC, TVirtualMC*& targetMC) mutable
      {
+       //targetMC = currentMC;
+       //return;
        //Info("RegisterSuggestTrackForMoving", "volume change same engine, former vol id: %i, former track id: %i", formerVolId, formerTrackId);
        Int_t volId = gGeoManager->GetCurrentVolume()->GetNumber();
        Int_t trackId = TMCStackManager::Instance()->GetCurrentTrackNumber();
@@ -256,11 +251,15 @@ Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
   }
   // After all preparation steps are done, the application can be run just like
   // the following. Note, that CEMCApplication::Run(Int_t nofEvents) is not
-  // inherited from TVirtualMCConcurrentApplication.
+  // inherited from TVirtualMCMultiApplication.
   TStopwatch timer;
+  auto start = std::chrono::high_resolution_clock::now();
   appl->Run(nEvents);
-  timer.Stop();
-  timer.Print();
+  auto finish = std::chrono::high_resolution_clock::now();
+  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish-start);
+  //timer.Stop();
+  //timer.Print();
+  std::cout << "Time elapsed: " << microseconds.count() << " x 10^-6 s" << std::endl;
   // Print some status information.
   appl->PrintStatus();
   TMCStackManager::Instance()->Print();
@@ -271,7 +270,7 @@ Int_t runConcurrent(Int_t nEvents, const char* firstEngineName,
   // 2) gGeoManager->GetTopVolume()->Draw()
   // 3) gGeoManager->DrawTracks()
   // Note, that CEMCApplication::ExportGeometry() is not inherited from
-  // TVirtualMCConcurrentApplication.
+  // TVirtualMCMultiApplication.
   //appl->ExportGeometry();
 
   return 0;
@@ -297,8 +296,6 @@ Int_t runSingle(Int_t nEvents, const char* engineName, int argc, char** argv)
   Info("runSingle", "Construct the detector geometry");
   appl->ConstructUserGeometry();
 
-  // Use this later for some further demonstration
-  TVirtualMC* mc = nullptr;
 
   if(strcmp(engineName, "TGeant4") == 0) {
     Info("runSingle", "Setup Geant4 VMC");
@@ -316,19 +313,19 @@ Int_t runSingle(Int_t nEvents, const char* engineName, int argc, char** argv)
     geant3->SetHADR(0);
   }
 
-  // Demonstrate how the TMCManager can be used to get the current engine which
-  // is either TGeant3TGeo or TGeant4.
-  mc = TMCManager::GetMC();
-  std::cout << mc->GetName() << std::endl;
-  Info("runSingle", "VMC %s was set up", mc->GetName());
+  Info("runSingle", "VMC %s was set up", appl->GetMC()->GetName());
 
   // After all preparation steps are done, the application can be run just like
   // the following. Note, that CEMCApplication::Run(Int_t nofEvents) is not
-  // inherited from TVirtualMCConcurrentApplication.
-  TStopwatch timer;
+  // inherited from TVirtualMCMultiApplication.
+  //TStopwatch timer;
+  auto start = std::chrono::high_resolution_clock::now();
   appl->Run(nEvents);
-  timer.Stop();
-  timer.Print();
+  auto finish = std::chrono::high_resolution_clock::now();
+  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish-start);
+  //timer.Stop();
+  //timer.Print();
+  std::cout << "Time elapsed: " << microseconds.count() << " x 10^-6 s" << std::endl;
   // Print some status information.
   appl->PrintStatus();
   TMCStackManager::Instance()->Print();
@@ -339,7 +336,7 @@ Int_t runSingle(Int_t nEvents, const char* engineName, int argc, char** argv)
   // 2) gGeoManager->GetTopVolume()->Draw()
   // 3) gGeoManager->DrawTracks()
   // Note, that CEMCApplication::ExportGeometry() is not inherited from
-  // TVirtualMCConcurrentApplication.
+  // TVirtualMCMultiApplication.
 
   return 0;
 }
@@ -364,9 +361,9 @@ int main(int argc, char** argv)
   // 2: first engines
   // 3: second engine (optional)
   // No user argument
-  if(argc < 1 || argc > 4) {
+  if(argc < 3 || argc > 4) {
     printHelp();
-    return 0;
+    return 1;
   }
 
   // So there is at least one user argument
@@ -379,7 +376,7 @@ int main(int argc, char** argv)
   }
   // 2 arguments given by the user, assume concurrent
   if(argc == 4) {
-    return runConcurrent(atoi(argv[1]), argv[2], argv[3], argc, argv);
+    return runMulti(atoi(argv[1]), argv[2], argv[3], argc, argv);
   }
   // Just one user argument
   return runSingle(atoi(argv[1]), argv[2], argc, argv);

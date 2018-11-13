@@ -7,46 +7,44 @@
 // Contact: root-vmc@cern.ch
 //-------------------------------------------------
 
-/// \file CEMCConcurrentApplication.cxx
-/// \brief Implementation of the CEMCConcurrentApplication class
+/// \file CEMCMultiApplication.cxx
+/// \brief Implementation of the CEMCMultiApplication class
 ///
 /// Geant4 ExampleN01 adapted to Virtual Monte Carlo \n
 ///
 /// \date 05/04/2002
 /// \author I. Hrivnacova; IPN, Orsay
 
-#include "CEMCConcurrentApplication.h"
+#include "CEMCMultiApplication.h"
 #include "CEMCStack.h"
 
-#include <TMCManager.h>
 #include <TVirtualMC.h>
-#include <TROOT.h>
-#include <Riostream.h>
-#include <TInterpreter.h>
-#include <TMCStackManager.h>
-#include <TLorentzVector.h>
-#include <TArrayD.h>
+#include <TVirtualMCStack.h>
+
 #include <TGeoManager.h>
 #include <TGeoMatrix.h>
 #include <TGeoMaterial.h>
 #include <TVirtualGeoTrack.h>
-#include <TThread.h>
-#include <TError.h>
 
-#include "TParticle.h"
+#include <TROOT.h>
+#include <Riostream.h>
+#include <TInterpreter.h>
+#include <TThread.h>
+
+#include <TLorentzVector.h>
+#include <TArrayD.h>
+#include <TError.h>
 
 using namespace std;
 
 /// \cond CLASSIMP
-ClassImp(CEMCConcurrentApplication)
+ClassImp(CEMCMultiApplication)
 /// \endcond
 
 //_____________________________________________________________________________
-CEMCConcurrentApplication::CEMCConcurrentApplication(const char *name, const char *title)
-  : TVirtualMCConcurrentApplication(name,title),
-    fCurrentMCEngine(nullptr),
+CEMCMultiApplication::CEMCMultiApplication(const char *name, const char *title)
+  : TVirtualMCMultiApplication(name,title),
     fMagField(0),
-    fMCStackManager(TMCStackManager::Instance()),
     fImedAr(0),
     fImedAl(0),
     fImedPb(0),
@@ -71,16 +69,12 @@ CEMCConcurrentApplication::CEMCConcurrentApplication(const char *name, const cha
   // create magnetic field (with zero value)
   fMagField = new TGeoUniformMagField();
   fStack = new CEMCStack(fStackSize);
-  fMCStackManager->RegisterStack(fStack);
-  fMCManager->ConnectToCurrentMC(fCurrentMCEngine);
 }
 
 //_____________________________________________________________________________
-CEMCConcurrentApplication::CEMCConcurrentApplication()
-  : TVirtualMCConcurrentApplication(),
-    fCurrentMCEngine(nullptr),
+CEMCMultiApplication::CEMCMultiApplication()
+  : TVirtualMCMultiApplication(),
     fMagField(0),
-    fMCStackManager(TMCStackManager::Instance()),
     fImedAr(0),
     fImedAl(0),
     fImedPb(0),
@@ -101,13 +95,13 @@ CEMCConcurrentApplication::CEMCConcurrentApplication()
 }
 
 //_____________________________________________________________________________
-CEMCConcurrentApplication::~CEMCConcurrentApplication()
+CEMCMultiApplication::~CEMCMultiApplication()
 {
 /// Destructor
   delete fMagField;
 }
 
-void CEMCConcurrentApplication::ExportGeometry(const char* path) const
+void CEMCMultiApplication::ExportGeometry(const char* path) const
 {
   if(!gGeoManager || !gGeoManager->IsClosed()) {
     Warning("ExportGeometry", "TGeoManager not existing or geometry not closed yet.");
@@ -120,7 +114,7 @@ void CEMCConcurrentApplication::ExportGeometry(const char* path) const
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::ConstructMaterials()
+void CEMCMultiApplication::ConstructMaterials()
 {
 /// Construct materials using TGeo modeller
 
@@ -189,7 +183,7 @@ void CEMCConcurrentApplication::ConstructMaterials()
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::ConstructVolumes()
+void CEMCMultiApplication::ConstructVolumes()
 {
 /// Contruct volumes using TGeo modeller
 
@@ -254,20 +248,20 @@ void CEMCConcurrentApplication::ConstructVolumes()
 
 
 //_____________________________________________________________________________
-//TVirtualMCApplication* CEMCConcurrentApplication::CloneForWorker() const
+//TVirtualMCApplication* CEMCMultiApplication::CloneForWorker() const
 //{
-//  return new CEMCConcurrentApplication(GetName(), GetTitle());
+//  return new CEMCMultiApplication(GetName(), GetTitle());
 //}
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::InitForWorker() const
+void CEMCMultiApplication::InitForWorker() const
 {
   //gMC->SetStack(fStack);
   //gMC->SetMagField(fMagField);
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::ConstructGeometry()
+void CEMCMultiApplication::ConstructGeometryMulti()
 {
 /// Construct geometry using TGeo functions or
 /// TVirtualMC functions (if oldGeometry is selected)
@@ -278,14 +272,14 @@ void CEMCConcurrentApplication::ConstructGeometry()
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::InitGeometryConcurrent()
+void CEMCMultiApplication::InitGeometryMulti()
 {
 /// Initialize geometry.
   Info("InitGeometry", "Init geometry for all engines");
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::GeneratePrimaries()
+void CEMCMultiApplication::GeneratePrimariesMulti()
 {
 
   // Monitor calls to this method
@@ -299,11 +293,11 @@ void CEMCConcurrentApplication::GeneratePrimaries()
  Int_t toBeDone = 1;
 
  // Geantino
- //Int_t pdg  = 0;
+ Int_t pdg  = 0;
  // Proton
  //Int_t pdg  = 2212;
  // Electron
- Int_t pdg  = 11;
+ //Int_t pdg  = 11;
 
  // Polarization
  Double_t polx = 0.;
@@ -326,51 +320,51 @@ void CEMCConcurrentApplication::GeneratePrimaries()
 
 
  // Add particle to stack
- fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
-                  kPPrimary, ntr, 1., 0);
+ fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx,
+                   poly, polz, kPPrimary, ntr, 1., 0);
 
  // Change direction and add particle to stack
 /*
  px = 10.;
  py = 0.1;
  pz = 0.;
- fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
-                  kPPrimary, ntr, 1., 0);
+ fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx,
+                   poly, polz, kPPrimary, ntr, 1., 0);
 
  // Change direction and add particle to stack
  px = 1000.;
  py = 0.;
  pz = 0.1;
- fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx, poly, polz,
-                  kPPrimary, ntr, 1., 0);
+ fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx,
+                   poly, polz, kPPrimary, ntr, 1., 0);
   */
 }
 
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::BeginEventConcurrent()
+void CEMCMultiApplication::BeginEventMulti()
 {
 /// User actions at beginning of event.
 /// Nothing to be done this example
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::BeginPrimaryConcurrent()
+void CEMCMultiApplication::BeginPrimaryMulti()
 {
 /// User actions at beginning of a primary track.
 /// Nothing to be done this example
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::PreTrackConcurrent()
+void CEMCMultiApplication::PreTrackMulti()
 {
 /// User actions at beginning of each track.
 /// Print info message.
-
+  return;
   // We know our PDG is 0 (geantino), so use this here
   //fCurrTrackId = gGeoManager->AddTrack(fCurrTrackId, 0);
-  fCurrTrackId = fMCStackManager->GetCurrentTrackNumber();
-  return;
+  fCurrTrackId = fStack->GetCurrentTrackNumber();
+
   //cout << "Starting track " << fCurrTrackId;
   if(fTrackIdToGeoTrackId.find(fCurrTrackId) == fTrackIdToGeoTrackId.end()) {
     fTrackIdToGeoTrackId[fCurrTrackId] = gGeoManager->AddTrack(fCurrTrackId, 0);
@@ -383,7 +377,7 @@ void CEMCConcurrentApplication::PreTrackConcurrent()
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::SteppingConcurrent()
+void CEMCMultiApplication::SteppingMulti()
 {
 /// User actions at each step.
 /// Print track position, the current volume and current medium names.
@@ -391,11 +385,11 @@ void CEMCConcurrentApplication::SteppingConcurrent()
 
   TLorentzVector currPosition;
   TLorentzVector currMomentum;
-  fCurrentMCEngine->TrackPosition(currPosition);
-  fCurrentMCEngine->TrackMomentum(currMomentum);
-  //Double_t currTof = fCurrentMCEngine->TrackTime();
+  fMC->TrackPosition(currPosition);
+  fMC->TrackMomentum(currMomentum);
+  //Double_t currTof = fMC->TrackTime();
   // Temporary pointer to name
-  const char* currentEngineName = fCurrentMCEngine->GetName();
+  const char* currentEngineName = fMC->GetName();
 
   //Info("Stepping", "Stepping in engine %s", currentEngineName);
 
@@ -405,20 +399,20 @@ void CEMCConcurrentApplication::SteppingConcurrent()
                                                    currPosition.Z(),
                                                    currPosition.T());*/
   // Count secondarie
-  fNSecondaries += fCurrentMCEngine->NSecondaries();
+  fNSecondaries += fMC->NSecondaries();
   // Extract current volume information from VMC
   Int_t copyNo;
-  Int_t volID = fCurrentMCEngine->CurrentVolID(copyNo);
+  Int_t volID = fMC->CurrentVolID(copyNo);
   // Get spatial information from navigator
   const Double_t* currPointNav = gGeoManager->GetCurrentPoint();
-  Int_t volIdGeoMan = gGeoManager->GetCurrentVolume()->GetNumber();
+  // Int_t volIdGeoMan = gGeoManager->GetCurrentVolume()->GetNumber();
   /*cout << "\nPosition VMC (t,x,y,z): " << currPosition.T() << ", "
        << currPosition.X() << " " << currPosition.Y() << " " << currPosition.Z()
        << "\nMomentum (E,px,py,pz): " << currMomentum.E() << ", "
        << currMomentum.Px() << ", " << currMomentum.Py() << ", " << currMomentum.Pz()
        << "\ntrackID: " << fCurrTrackId << ", PDGID: "
-       << fCurrentMCEngine->TrackPid()
-       << "\n(volName: " << fCurrentMCEngine->CurrentVolName() << ", id, copyNo: "
+       << fMC->TrackPid()
+       << "\n(volName: " << fMC->CurrentVolName() << ", id, copyNo: "
        << volID << ", " << copyNo << ")"
        << "\nPosition navigator (x,y,z): " << currPointNav[0] << ", "
        << currPointNav[1] << ", " << currPointNav[2]
@@ -427,12 +421,12 @@ void CEMCConcurrentApplication::SteppingConcurrent()
   cout
 
 
-      << ", #secondaries: " << fCurrentMCEngine->NSecondaries()
+      << ", #secondaries: " << fMC->NSecondaries()
       << endl;
 
 
 
-  Int_t currentMed = fCurrentMCEngine->CurrentMedium();
+  Int_t currentMed = fMC->CurrentMedium();
   if (currentMed == fImedAr) cout << "MediumID: " << fImedAr <<  " ArgonGas";
   if (currentMed == fImedAl) cout << "MediumID: " << fImedAl <<  " Aluminium";
   if (currentMed == fImedPb) cout << "MediumID: " << fImedPb <<  " Lead";
@@ -440,40 +434,41 @@ void CEMCConcurrentApplication::SteppingConcurrent()
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::PostTrackConcurrent()
+void CEMCMultiApplication::PostTrackMulti()
 {
   // Sum number of tracks processed by respective engines.
-  if(strcmp(fCurrentMCEngine->GetName(), "TGeant4") == 0) {
+  /*if(strcmp(fMC->GetName(), "TGeant4") == 0) {
     fNTracksG4++;
   } else {
     fNTracksG3++;
-  }
+  }*/
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::FinishPrimaryConcurrent()
+void CEMCMultiApplication::FinishPrimaryMulti()
 {
 /// User actions after finishing of a primary track.
 /// Nothing to be done this example
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::FinishEventConcurrent()
+void CEMCMultiApplication::FinishEventMulti()
 {
 /// User actions after finishing of an event
 /// Nothing to be done this example
   fNEventsProcessed++;
-  //Info("FinishEventConcurrent", "Finish event in concurrent mode");
+  fStack->ResetStack();
+  //Info("FinishEventMulti", "Finish event in concurrent mode");
 }
 
-void CEMCConcurrentApplication::Run(Int_t nofEvents)
+void CEMCMultiApplication::Run(Int_t nofEvents)
 {
-  fMCManager->InitMCs();
-  fMCManager->RunMCs(nofEvents);
+  InitTransport();
+  RunTransport(nofEvents);
 }
 
 //_____________________________________________________________________________
-void CEMCConcurrentApplication::PrintStatus() const
+void CEMCMultiApplication::PrintStatus() const
 {
   cout << "#############################################\n";
   cout << "########## STATUS of MCApplication ##########\n";

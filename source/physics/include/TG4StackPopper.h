@@ -17,7 +17,7 @@
 
 #include <G4VProcess.hh>
 
-class TMCQueue;
+class TVirtualMCStack;
 
 class G4Track;
 
@@ -71,7 +71,7 @@ class TG4StackPopper: public G4VProcess
 
     void Notify();
     void Reset();
-    void SetMCStack(TMCQueue*  mcQueue);
+    void SetMCStack(TVirtualMCStack*  mcStack);
     void SetDoExclusiveStep(G4TrackStatus trackStatus);
 
     G4bool HasPoppedTracks() const;
@@ -86,7 +86,7 @@ class TG4StackPopper: public G4VProcess
     static G4ThreadLocal TG4StackPopper*  fgInstance;
 
     /// Cached pointer to thread-local VMC stack
-    TMCQueue*  fMCQueue;
+    TVirtualMCStack*  fMCStack;
 
     /// the counter for popped tracks
     G4int  fNofDoneTracks;
@@ -114,9 +114,9 @@ inline G4bool TG4StackPopper::IsApplicable(
   return true;
 }
 
-inline void TG4StackPopper::SetMCStack(TMCQueue*  mcQueue) {
+inline void TG4StackPopper::SetMCStack(TVirtualMCStack*  mcStack) {
   /// Set  cached pointer to thread-local VMC stack
-  fMCQueue = mcQueue;
+  fMCStack = mcStack;
 }
 
 #endif //TG4_STACK_POPPER_H

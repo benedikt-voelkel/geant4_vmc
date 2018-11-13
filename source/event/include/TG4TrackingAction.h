@@ -28,8 +28,7 @@ class TG4StackPopper;
 class TG4SpecialControlsV2;
 
 class TVirtualMCApplication;
-class TMCQueue;
-class TMCStackManager;
+class TVirtualMCStack;
 
 class G4Track;
 
@@ -65,7 +64,7 @@ class TG4TrackingAction : public G4UserTrackingAction,
     void FinishPrimaryTrack();
 
     // set methods
-    void SetMCStack(TMCQueue*  mcQueue);
+    void SetMCStack(TVirtualMCStack*  mcStack);
     void SetNewVerboseLevel(G4int level);
     void SetNewVerboseTrackID(G4int trackID);
     void SetSpecialControls(TG4SpecialControlsV2* specialControls);
@@ -104,7 +103,7 @@ class TG4TrackingAction : public G4UserTrackingAction,
     TVirtualMCApplication*  fMCApplication;
 
     /// Cached pointer to thread-local VMC stack
-    TMCQueue*  fMCQueue;
+    TVirtualMCStack*  fMCStack;
 
     /// Cached pointer to thread-local step manager
     TG4StepManager*  fStepManager;
@@ -129,9 +128,6 @@ class TG4TrackingAction : public G4UserTrackingAction,
 
     /// track ID for which the new verbose level is applied
     G4int   fNewVerboseTrackID;
-
-    /// Pointer to the TMCStackManager singleton
-    TMCStackManager* fMCStackManager;
 };
 
 
@@ -152,9 +148,9 @@ inline void TG4TrackingAction::PostTrackingAction(const G4Track* /*aTrack*/) {
   /// in a user defined class
 }
 
-inline void TG4TrackingAction::SetMCStack(TMCQueue* mcQueue) {
+inline void TG4TrackingAction::SetMCStack(TVirtualMCStack* mcStack) {
   /// Set  cached pointer to thread-local VMC stack
-  fMCQueue = mcQueue;
+  fMCStack = mcStack;
 }
 
 inline void TG4TrackingAction::SetSpecialControls(TG4SpecialControlsV2* specialControls) {

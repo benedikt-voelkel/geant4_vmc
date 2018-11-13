@@ -1,5 +1,5 @@
-#ifndef CE_MC_CONCURRENT_APPLICATION_H
-#define CE_MC_CONCURRENT_APPLICATION_H
+#ifndef CE_MC_MULTLI_APPLICATION_H
+#define CE_MC_MULTLI_APPLICATION_H
 
 //------------------------------------------------
 // The Virtual Monte Carlo examples
@@ -10,8 +10,8 @@
 // Contact: root-vmc@cern.ch
 //-------------------------------------------------
 
-/// \file CEMCConcurrentApplication.h
-/// \brief Definition of the CEMCConcurrentApplication class
+/// \file CEMCMultiApplication.h
+/// \brief Definition of the CEMCMultiApplication class
 ///
 /// Adapting example E01 to demonstrate the usage of GEANT3 and GEANT4 running concurrently.
 ///
@@ -19,28 +19,26 @@
 
 #include <map> // For testing/providing mapping between VMC stack track and TGeoTrack
 
-#include <TVirtualMCConcurrentApplication.h>
-#include <TVirtualMCStack.h>
+#include <TVirtualMCMultiApplication.h>
 
 class TVirtualMagField;
-class TMCStackManager;
-class TVirtualMC;
+class CEMCStack;
 
-/// \ingroup ConcurrentEngines
+/// \ingroup MultiEngines
 /// \brief Implementation of the TVirtualMCApplication
 ///
 /// \date 02/08/2018
 /// \author B. Volkel; Heidelberg University
 
-class CEMCConcurrentApplication : public TVirtualMCConcurrentApplication
+class CEMCMultiApplication : public TVirtualMCMultiApplication
 {
   public:
-    CEMCConcurrentApplication(const char *name, const char *title);
-    CEMCConcurrentApplication();
-    virtual ~CEMCConcurrentApplication();
+    CEMCMultiApplication(const char *name, const char *title);
+    CEMCMultiApplication();
+    virtual ~CEMCMultiApplication();
 
     // static access method
-    static CEMCConcurrentApplication* Instance();
+    static CEMCMultiApplication* Instance();
 
     // Export the geometry for further inspection
     void ExportGeometry(const char* path = ".") const;
@@ -53,18 +51,15 @@ class CEMCConcurrentApplication : public TVirtualMCConcurrentApplication
     //virtual TVirtualMCApplication* CloneForWorker() const override;
     virtual void InitForWorker() const  override;
     virtual void ConstructGeometry() override;
-    virtual void InitGeometryConcurrent() override;
-    virtual void GeneratePrimaries() override;
-    virtual void BeginEventConcurrent() override;
-    virtual void BeginPrimaryConcurrent() override;
-    virtual void PreTrackConcurrent() override;
-    virtual void SteppingConcurrent() override;
-    virtual void PostTrackConcurrent() override;
-    virtual void FinishPrimaryConcurrent() override;
-    virtual void FinishEventConcurrent() override;
-
-    // methods for tests
-    void SetOldGeometry(Bool_t oldGeometry = kTRUE);
+    virtual void InitGeometryMulti() override;
+    virtual void GeneratePrimariesMulti() override;
+    virtual void BeginEventMulti() override;
+    virtual void BeginPrimaryMulti() override;
+    virtual void PreTrackMulti() override;
+    virtual void SteppingMulti() override;
+    virtual void PostTrackMulti() override;
+    virtual void FinishPrimaryMulti() override;
+    virtual void FinishEventMulti() override;
 
   private:
     // methods
@@ -72,10 +67,8 @@ class CEMCConcurrentApplication : public TVirtualMCConcurrentApplication
     void ConstructVolumes();
 
     // data members
-    TVirtualMC*       fCurrentMCEngine;          ///< Pointer to current MC engine
     TVirtualMagField* fMagField;                 ///< The magnetic field
-    TMCStackManager*  fMCStackManager;           ///< Store pointer to global TMCStackManager
-    TVirtualMCStack*  fStack;                    ///< VMC stack to push tracks to
+    CEMCStack*        fStack;                    ///< The stack
     Int_t             fImedAr;                   ///< The Argon gas medium Id
     Int_t             fImedAl;                   ///< The Aluminium medium Id
     Int_t             fImedPb;                   ///< The Lead medium Id
@@ -96,15 +89,15 @@ class CEMCConcurrentApplication : public TVirtualMCConcurrentApplication
     std::map<Int_t,Int_t> fSteps;                ///< Monitor the number of steps for a given track number
 
 
-  ClassDef(CEMCConcurrentApplication,1)  //Interface to MonteCarlo application
+  ClassDefOverride(CEMCMultiApplication,1)  //Interface to MonteCarlo application
 };
 
 // inline functions
 
-inline CEMCConcurrentApplication* CEMCConcurrentApplication::Instance()
+inline CEMCMultiApplication* CEMCMultiApplication::Instance()
 {
   /// \return The MC application instance
-  return (CEMCConcurrentApplication*)(TVirtualMCConcurrentApplication::Instance());
+  return (CEMCMultiApplication*)(TVirtualMCMultiApplication::Instance());
 }
 
-#endif //CE_MC_CONCURRENT_APPLICATION_H
+#endif //CE_MC_MULTLI_APPLICATION_H

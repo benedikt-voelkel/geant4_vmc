@@ -29,7 +29,7 @@
 
 class TGeoManager;
 class TGeoNavigator;
-class TGeoCacheManual;
+class TGeoStateCache;
 class TGeoNode;
 class TG4RootDetectorConstruction;
 class G4TrackingManager;
@@ -60,7 +60,7 @@ protected:
    std::unordered_map<Int_t,Int_t> fTrackIdGeoStateIndexMap; ///< Mapping geometry state
                                                    ///< index cached in TGeoNavigator
                                                    ///< to G4Track id
-    TGeoCacheManual* fGeoStateCache;    ///< Pointer to access cached geo states
+    TGeoStateCache* fGeoStateCache;    ///< Pointer to access cached geo states
 private:
    G4VPhysicalVolume *SynchronizeHistory();
    TGeoNode          *SynchronizeGeoManager();

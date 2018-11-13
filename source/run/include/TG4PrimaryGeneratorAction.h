@@ -23,7 +23,7 @@
 class G4Event;
 
 /// \ingroup run
-/// \brief Primary generator action defined via TMCQueue 
+/// \brief Primary generator action defined via TVirtualMCStack 
 /// and TVirtualMCApplication.
 ///
 /// \author I. Hrivnacova; IPN, Orsay

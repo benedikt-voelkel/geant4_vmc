@@ -27,3 +27,5 @@ In the `$INSTALLDIR` there is the executable `vmc_exampleCE` which is used as
 $> $INSTALLDIR/vmc_exampleCE <numberOfEvents> <engine1> [<engine2>]
 ```
 where in each event one 10 GeV electron is shot through the geometry. For the engine one can choose any combination of TGeant3 and TGeant4 and the second engine is optional.
+
+To study and compare some observables of the single and concurrent run, please see the [MCValidation repository](https://github.com/benedikt-voelkel/MCValidation).

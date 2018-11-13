@@ -27,7 +27,7 @@
 
 #include <TVirtualMC.h>
 #include <TVirtualMCApplication.h>
-#include <TMCStackManager.h>
+#include <TVirtualMCStack.h>
 #include <TMCProcess.h>
 
 #include <G4TrackVector.hh>
@@ -45,7 +45,7 @@ TG4TrackingAction::TG4TrackingAction()
     fSpecialControls(0),
     fTrackManager(0),
     fMCApplication(0),
-    fMCQueue(0),
+    fMCStack(0),
     fStepManager(0),
     fStackPopper(0),
     fPrimaryTrackID(0),
@@ -53,8 +53,7 @@ TG4TrackingAction::TG4TrackingAction()
     fTrackSaveControl(kDoNotSave),
     fOverwriteLastTrack(false),
     fNewVerboseLevel(0),
-    fNewVerboseTrackID(-1),
-    fMCStackManager(TMCStackManager::Instance())
+    fNewVerboseTrackID(-1)
 {
 /// Default constructor
 
@@ -161,7 +160,7 @@ void TG4TrackingAction::PrepareNewEvent()
   if ( fTrackManager->GetTrackSaveControl() != kDoNotSave )
     fTrackManager->SetNofTracks(0);
   else
-    fTrackManager->SetNofTracks(fMCQueue->GetNtrack());
+    fTrackManager->SetNofTracks(fMCStack->GetNtrack());
 
   fCurrentTrackID = 0;
 }
@@ -180,6 +179,7 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
   G4bool isFirstStep = ( track->GetCurrentStepNumber() == 0 );
 
   // finish previous primary track first
+  // \note Why is this done here and not when this track is finished?
   if (track->GetParentID() == 0 && isFirstStep) {
     FinishPrimaryTrack();
   }
@@ -202,6 +202,7 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
     = fTrackManager->SetTrackInformation(track, fOverwriteLastTrack);
     // Do that here in case the track is already known i.e. either a primary or a
     // secondary pushed to the VMC stack in the step it was produced
+  fMCStack->SetCurrentTrack(trackId);
 
   if ( isFirstStep ) {
     if (track->GetParentID() == 0) {
@@ -228,15 +229,14 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
       //G4cout << "Save secondary with VMC track ID " << trackId << " in pre track" << G4endl;
       // Update the VMC track number
       fTrackManager->GetTrackInformation(track)->SetTrackParticleID(trackId);
+      // Update current track on VMC stack which was assigned by it before in
+      // TG4TrackManager::TrackToStack
+      fMCStack->SetCurrentTrack(trackId);
 
       // Notify a stack popper (if activated) about saving this secondary
       if ( fStackPopper ) fStackPopper->Notify();
     }
   }
-  // \note The weird thing here is that the VMC is set to a track number it
-  // actually does not have the corresponding track to, namely in case
-  // fTrackSaveControl == kDoNotSave
-  fMCStackManager->SetCurrentTrack(trackId);
 
 
   // verbose

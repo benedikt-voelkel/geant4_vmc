@@ -17,7 +17,7 @@
 
 #include "CEMCStack.h"
 
-#include <TTrack.h>
+#include <TParticle.h>
 #include <TObjArray.h>
 #include <TError.h>
 
@@ -33,7 +33,6 @@ CEMCStack::CEMCStack(Int_t size)
 {
 /// Standard constructor
 /// \param size  The stack size
-
   fTracks = new TObjArray(size);
 }
 
@@ -58,7 +57,7 @@ CEMCStack::~CEMCStack()
 // private methods
 
 //_____________________________________________________________________________
-TTrack*  CEMCStack::GetTrack(Int_t id) const
+TParticle*  CEMCStack::GetTrack(Int_t id) const
 {
 /// \return   The \em id -th particle in fParticles
 /// \param id The index of the particle to be returned
@@ -66,11 +65,19 @@ TTrack*  CEMCStack::GetTrack(Int_t id) const
   if (id < 0 || id >= fTracks->GetEntriesFast())
     Fatal("GetTrack", "Index out of range");
 
-  return (TTrack*)fTracks->At(id);
+  return (TParticle*)fTracks->At(id);
 }
 
 
 // public methods
+
+//_____________________________________________________________________________
+void CEMCStack::ResetStack()
+{
+   fTracks->Delete();
+   //fTracks->Expand(fSize);
+
+}
 
 //_____________________________________________________________________________
 void  CEMCStack::PushTrack(Int_t toBeDone, Int_t parent, Int_t pdg,
@@ -106,13 +113,13 @@ void  CEMCStack::PushTrack(Int_t toBeDone, Int_t parent, Int_t pdg,
   const Int_t kLastDaughter=-1;
   // Set track number already at beginning and forward to TParticle constructor
   ntr = GetNtrack();
-  TTrack* mother = 0;
+  TParticle* mother = 0;
   if (parent>=0) {
     mother = GetTrack(parent);
   } else {
     fNPrimary++;
   }
-  TTrack* track = new TTrack(ntr, pdg, is, mother, px, py, pz, e, vx, vy, vz, tof,
+  TParticle* track = new TParticle(ntr, pdg, is, mother, px, py, pz, e, vx, vy, vz, tof,
                              -1);
   // Add this track as child to parent track
   if(mother) {
@@ -133,7 +140,7 @@ void  CEMCStack::PushTrack(Int_t toBeDone, Int_t parent, Int_t pdg,
 }
 
 //_____________________________________________________________________________
-TTrack* CEMCStack::PopNextTrack(Int_t& itrack)
+TParticle* CEMCStack::PopNextTrack(Int_t& itrack)
 {
 /// Get next particle for tracking from the stack.
 /// \return        The popped particle object
@@ -144,7 +151,7 @@ TTrack* CEMCStack::PopNextTrack(Int_t& itrack)
     return 0;
   }
 
-  TTrack* track = fStack.top();
+  TParticle* track = fStack.top();
   fStack.pop();
 
   if (!track) {
@@ -158,7 +165,7 @@ TTrack* CEMCStack::PopNextTrack(Int_t& itrack)
 }
 
 //_____________________________________________________________________________
-TTrack* CEMCStack::PopPrimaryForTracking(Int_t i)
+TParticle* CEMCStack::PopPrimaryForTracking(Int_t i)
 {
 /// Return \em i -th particle in fParticles.
 /// \return   The popped primary particle object
@@ -169,7 +176,7 @@ TTrack* CEMCStack::PopPrimaryForTracking(Int_t i)
     Fatal("PopPrimaryForTracking", "Index out of range");
   }
 
-  return (TTrack*)fTracks->At(i);
+  return (TParticle*)fTracks->At(i);
 }
 
 //_____________________________________________________________________________
@@ -206,11 +213,11 @@ Int_t  CEMCStack::GetNprimary() const
 }
 
 //_____________________________________________________________________________
-TTrack* CEMCStack::GetCurrentTrack() const
+TParticle* CEMCStack::GetCurrentTrack() const
 {
 /// \return  The current track particle
 
-  TTrack* current = GetTrack(fCurrentTrack);
+  TParticle* current = GetTrack(fCurrentTrack);
 
   if (current) {
     return  current;
@@ -231,13 +238,13 @@ Int_t  CEMCStack::GetCurrentParentTrackNumber() const
 {
 /// \return  The current track parent ID.
 
-  TTrack* current = GetTrack(fCurrentTrack);
+  TParticle* current = GetTrack(fCurrentTrack);
 
   if (!current) {
     return -1;
   }
 
-  const TTrack* parent = current->GetParent();
+  const TParticle* parent = current->GetParent();
 
   if (!parent) {
     return -1;

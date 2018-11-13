@@ -27,9 +27,9 @@ endif()
 cmake_minimum_required(VERSION 2.6.4 FATAL_ERROR)
 
 #--- Prepend our own CMake Modules to the search path --------------------------
-set(CMAKE_MODULE_PATH 
+set(CMAKE_MODULE_PATH
     ${CMAKE_SOURCE_DIR}/cmake
-    ${CMAKE_MODULE_PATH}) 
+    ${CMAKE_MODULE_PATH})
 
 #--- Project definitions -------------------------------------------------------
 project(Geant4VMCPackages)
@@ -40,7 +40,7 @@ option(Geant4VMC_BUILD_G4Root      "Build G4Root" ON)
 option(Geant4VMC_BUILD_G4Root_TEST "Build G4Root test" OFF)
 option(Geant4VMC_BUILD_MTRoot      "Build MTRoot" ON)
 option(Geant4VMC_BUILD_Geant4VMC   "Build Geant4VMC" ON)
-option(Geant4VMC_BUILD_EXAMPLES    "Build VMC examples" ON)
+option(Geant4VMC_BUILD_EXAMPLES    "Build VMC examples" OFF)
 option(Geant4VMC_USE_G4Root        "Build with G4Root" ON)
 option(Geant4VMC_USE_VGM           "Build with VGM" OFF)
 option(Geant4VMC_USE_GEANT4_UI     "Build with Geant4 UI drivers" ON)

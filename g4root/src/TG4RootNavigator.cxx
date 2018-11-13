@@ -15,7 +15,7 @@
 /// \author A. Gheata; CERN
 
 #include "TGeoManager.h"
-#include "TGeoCacheManual.h"
+#include "TGeoStateCache.h"
 #include "TGeoBranchArray.h"
 
 #include "TG4RootDetectorConstruction.h"
@@ -50,7 +50,7 @@ TG4RootNavigator::TG4RootNavigator()
                   fLastSafety(0),
                   fNzeroSteps(0),
                   fG4TrackingManager(0),
-                  fGeoStateCache(TGeoCacheManual::Instance())
+                  fGeoStateCache(TGeoStateCache::Instance())
 {
 /// Dummy ctor.
 }
@@ -68,7 +68,7 @@ TG4RootNavigator::TG4RootNavigator(TG4RootDetectorConstruction *dc)
                   fLastSafety(0),
                   fNzeroSteps(0),
                   fG4TrackingManager(0),
-                  fGeoStateCache(TGeoCacheManual::Instance())
+                  fGeoStateCache(TGeoStateCache::Instance())
 {
 /// Default ctor.
    fSafetyOrig.set(kInfinity, kInfinity, kInfinity);

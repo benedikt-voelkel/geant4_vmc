@@ -27,9 +27,8 @@
 #include <Randomize.hh>
 
 #include <TVirtualMC.h>
-#include <TMCQueue.h>
 #include <TVirtualMCApplication.h>
-#include <TMCStackManager.h>
+#include <TVirtualMCStack.h>
 #include <TSystem.h>
 
 #include <math.h>
@@ -40,13 +39,12 @@ TG4EventAction::TG4EventAction()
     fMessenger(this),
     fTimer(),
     fMCApplication(0),
-    fMCQueue(0),
+    fMCStack(0),
     fTrackingAction(0),
     fTrackManager(0),
     fStateManager(0),
     fPrintMemory(false),
-    fSaveRandomStatus(false),
-    fMCStackManager(TMCStackManager::Instance())
+    fSaveRandomStatus(false)
 {
 /// Default constructor
 }
@@ -82,7 +80,7 @@ void TG4EventAction::BeginOfEventAction(const G4Event* event)
 
   // fill primary particles in VMC stack if stack is empty
   // \note \todo Ask explicitly for primaries
-  if ( fMCStackManager->GetNtrack() == 0 ) {
+  if ( fMCStack->GetNtrack() == 0 ) {
     if (VerboseLevel() > 0)
       G4cout << "Filling VMC stack with primaries" << G4endl;
 
@@ -125,8 +123,8 @@ void TG4EventAction::EndOfEventAction(const G4Event* event)
   }
 
   if (VerboseLevel() > 2) {
-    G4int nofPrimaryTracks = fMCStackManager->GetNprimary();
-    G4int nofSavedTracks = fMCStackManager->GetNtrack();
+    G4int nofPrimaryTracks = fMCStack->GetNprimary();
+    G4int nofSavedTracks = fMCStack->GetNtrack();
 
     G4cout  << "    " << nofPrimaryTracks <<
                " primary tracks processed." << G4endl;

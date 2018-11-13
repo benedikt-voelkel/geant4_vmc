@@ -18,7 +18,7 @@
 
 
 #pragma link C++ class  CEMCSingleApplication+;
-#pragma link C++ class  CEMCConcurrentApplication+;
+#pragma link C++ class  CEMCMultiApplication+;
 #pragma link C++ class  CEMCStack+;
 #pragma link C++ class  CEParticle+;
 

@@ -21,9 +21,8 @@
 #include <G4IonTable.hh>
 
 #include <TVirtualMC.h>
-#include <TMCQueue.h>
-#include <TTrack.h>
-#include <TMCStackManager.h>
+#include <TVirtualMCStack.h>
+#include <TParticle.h>
 
 
 G4ThreadLocal TG4StackPopper* TG4StackPopper::fgInstance = 0;
@@ -31,7 +30,7 @@ G4ThreadLocal TG4StackPopper* TG4StackPopper::fgInstance = 0;
 //_____________________________________________________________________________
 TG4StackPopper::TG4StackPopper(const G4String& processName)
   : G4VProcess(processName, fUserDefined),
-    fMCQueue(0),
+    fMCStack(0),
     fNofDoneTracks(0),
     fDoExclusiveStep(false)
 {
@@ -46,7 +45,7 @@ TG4StackPopper::TG4StackPopper(const G4String& processName)
   fgInstance = this;
 
   // Cache thread-local pointers
-  fMCQueue = gMC->GetQueue();
+  fMCStack = gMC->GetStack();
 }
 
 //_____________________________________________________________________________
@@ -90,22 +89,21 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
 
   aParticleChange.Initialize(track);
 
-  if ( fMCQueue->GetNtrack() == 0 )
+  if ( fMCStack->GetNtrack() == 0 )
     return &aParticleChange;
 
-  // \note Caching the current track number is not needed anymore since popping
-  //       from queue does not change anything on the current track index
-  //Int_t currentTrackId = TMCStackManager::Instance()->GetCurrentTrackNumber();
-  Int_t nofTracksToPop = fMCQueue->GetNtrack();
+  Int_t currentTrackId = fMCStack->GetCurrentTrackNumber();
+  Int_t nofTracksToPop = fMCStack->GetNtrack();
   aParticleChange.SetNumberOfSecondaries(
                       aParticleChange.GetNumberOfSecondaries()+nofTracksToPop);
 
   for (G4int i=0; i<nofTracksToPop; ++i) {
 
     // Pop particle from the stack
-    const TTrack* track = fMCQueue->PopNextTrack();
+    Int_t trackId = -1;
+    const TParticle* particle = fMCStack->PopNextTrack(trackId);
 
-    if (!track) {
+    if (!particle) {
       TG4Globals::Exception(
         "TG4StackPopper", "PostStepDoIt", "No track popped from stack!");
       return &aParticleChange;
@@ -118,7 +116,7 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
 
     // Create dynamic particle
     G4DynamicParticle* dynamicParticle
-      = TG4ParticlesManager::Instance()->CreateDynamicParticle(track);
+      = TG4ParticlesManager::Instance()->CreateDynamicParticle(particle);
     if ( ! dynamicParticle ) {
       TG4Globals::Exception(
         "TG4StackPopper", "PostStepDoIt",
@@ -128,8 +126,8 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
     // Define track
 
     G4ThreeVector position
-      = TG4ParticlesManager::Instance()->GetParticlePosition(track);
-    G4double time = track->T()*TG4G3Units::Time();
+      = TG4ParticlesManager::Instance()->GetParticlePosition(particle);
+    G4double time = particle->T()*TG4G3Units::Time();
 
     G4Track* secondaryTrack
       = new G4Track(dynamicParticle, time, position);
@@ -137,11 +135,11 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
     // set track information here to avoid saving track in the stack
     // for the second time
     TG4TrackInformation* trackInformation
-      = new TG4TrackInformation(track->Id());
+      = new TG4TrackInformation(trackId);
         // the track information is deleted together with its
         // G4Track object
     trackInformation->SetIsUserTrack(true);
-    trackInformation->SetPDGEncoding(track->GetPdgCode());
+    trackInformation->SetPDGEncoding(particle->GetPdgCode());
     secondaryTrack->SetUserInformation(trackInformation);
 
     // Add track as a secondary
@@ -150,9 +148,7 @@ G4VParticleChange* TG4StackPopper::PostStepDoIt(const G4Track& track,
 
   // Set back current track number in the track
   // (as stack may have changed it with popping particles)
-  // \note this is not needed anymore since popping from queue does not change
-  //       anything on the current track index
-  // TMCStackManager::Instance()->SetCurrentTrackNumber(currentTrackId);
+  fMCStack->SetCurrentTrack(currentTrackId);
   // Set the kept track status if in exclusive step
   if ( fDoExclusiveStep ) {
     aParticleChange.ProposeTrackStatus(fTrackStatus);
@@ -176,7 +172,7 @@ void  TG4StackPopper::Reset()
 /// Reset the number of done tracks to the number od tracks in stack
 /// (when starting track)
 
-  fNofDoneTracks = fMCQueue->GetNtrack();
+  fNofDoneTracks = fMCStack->GetNtrack();
 }
 
 //_____________________________________________________________________________
@@ -193,5 +189,5 @@ G4bool TG4StackPopper::HasPoppedTracks() const
 {
 /// Return true if there are user tracks in stack
 
-  return ( gMC->GetQueue()->GetNtrack() != 0 );
+  return ( gMC->GetStack()->GetNtrack() != 0 );
 }

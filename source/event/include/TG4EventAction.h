@@ -28,8 +28,7 @@ class TG4TrackManager;
 class TG4StateManager;
 
 class TVirtualMCApplication;
-class TMCQueue;
-class TMCStackManager;
+class TVirtualMCStack;
 
 class G4Event;
 
@@ -51,7 +50,7 @@ class TG4EventAction : public G4UserEventAction,
     virtual void EndOfEventAction(const G4Event* event);
 
     // set methods
-    void SetMCStack(TMCQueue*  mcQueue);
+    void SetMCStack(TVirtualMCStack*  mcStack);
     void SetPrintMemory(G4bool printMemory);
     void SetSaveRandomStatus(G4bool saveRandomStatus);
 
@@ -73,7 +72,7 @@ class TG4EventAction : public G4UserEventAction,
     TVirtualMCApplication*  fMCApplication;
 
     /// Cached pointer to thread-local VMC stack
-    TMCQueue*  fMCQueue;
+    TVirtualMCStack*  fMCStack;
 
     /// Cached pointer to thread-local tracking action
     TG4TrackingAction*  fTrackingAction;
@@ -90,15 +89,13 @@ class TG4EventAction : public G4UserEventAction,
     /// Control for saving random engine status for each event
     G4bool  fSaveRandomStatus;
 
-    /// Pointer to the TMCStackManager singleton.
-    TMCStackManager* fMCStackManager;
 };
 
 // inline methods
 
-inline void TG4EventAction::SetMCStack(TMCQueue* mcQueue) {
+inline void TG4EventAction::SetMCStack(TVirtualMCStack* mcStack) {
   /// Set cached pointer to thread-local VMC stack
-  fMCQueue = mcQueue;
+  fMCStack = mcStack;
 }
 
 inline void TG4EventAction::SetPrintMemory(G4bool printMemory) {

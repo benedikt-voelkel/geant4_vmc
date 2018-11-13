@@ -18,7 +18,7 @@
 #include <G4Track.hh>
 
 #include <TVirtualMC.h>
-#include <TMCStackManager.h>
+#include <TVirtualMCStack.h>
 #include <TGeoManager.h>
 #include <TVirtualGeoTrack.h>
 #include <TParticlePDG.h>
@@ -54,13 +54,12 @@ void TG4GeoTrackManager::UpdateRootTrack(const G4Step* step)
 
    G4Track* track = step->GetTrack();
    G4int stepNumber = track->GetCurrentStepNumber();
+   TVirtualMCStack* stack = gMC->GetStack();
 
    if ( stepNumber == 1 ) {
      // Find and update parent track if it exists
-     Int_t trackNumber
-       = TMCStackManager::Instance()->GetCurrentTrackNumber();
-     Int_t parentTrackNumber
-       = TMCStackManager::Instance()->GetCurrentParentTrackNumber();
+     Int_t trackNumber = stack->GetCurrentTrackNumber();
+     Int_t parentTrackNumber = stack->GetCurrentParentTrackNumber();
      Int_t pdg = gMC->TrackPid();
      if ( parentTrackNumber >= 0 ) {
        fParentTGeoTrack = gGeoManager->FindTrackWithId(parentTrackNumber);

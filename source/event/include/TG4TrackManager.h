@@ -22,15 +22,13 @@
 #include <G4TrackVector.hh>
 
 #ifdef USE_G4ROOT
-#include "TG4RootNavMgr.h";
+#include "TG4RootNavMgr.h"
 #endif
 
 class TG4TrackInformation;
 class TG4StackPopper;
 
-class TMCQueue;
-class TTrack;
-class TMCStackManager;
+class TVirtualMCStack;
 
 class G4Track;
 class G4PrimaryVertex;
@@ -60,7 +58,7 @@ class TG4TrackManager : public TG4Verbose
     void  LateInitialize();
     void  AddPrimaryParticleId(G4int id);
     void  ExpectNewPrimaries(G4int nOfPrimaries);
-    void  NotifyOnNewVMCTrack(const TTrack* track);
+    void  NotifyOnNewVMCTrack(G4int id, G4int geoStateIndex);
     G4int SetTrackInformation(const G4Track* aTrack, G4bool overWrite = false);
     void  SetParentToTrackInformation(const G4Track* aTrack);
     void  SetBackPDGLifetime(const G4Track* aTrack);
@@ -72,7 +70,7 @@ class TG4TrackManager : public TG4Verbose
     void  SaveSecondaries(const G4Track* track, const G4TrackVector* secondaries);
 
     // set methods
-    void SetMCStack(TMCQueue*  mcQueue);
+    void SetMCStack(TVirtualMCStack*  stack);
     void SetTrackSaveControl(TG4TrackSaveControl control);
     void SetSaveDynamicCharge(G4bool saveDynamicCharge);
     void SetNofTracks(G4int nofTracks);
@@ -102,7 +100,7 @@ class TG4TrackManager : public TG4Verbose
     TG4TrackSaveControl fTrackSaveControl;   ///< control of saving secondaries
 
     /// Cached pointer to thread-local VMC stack
-    TMCQueue*  fMCQueue;
+    TVirtualMCStack*  fMCStack;
 
     /// Cached pointer to thread-local stack popper
     TG4StackPopper* fStackPopper;
@@ -111,7 +109,6 @@ class TG4TrackManager : public TG4Verbose
     G4int   fTrackCounter;          ///< tracks counter
     G4int   fCurrentTrackID;        ///< current track ID
     G4int   fNofSavedSecondaries;   ///< number of secondaries already saved
-    TMCStackManager* fMCStackManager; ///< Pointer to the TMCStackManager singleton
 #ifdef USE_G4ROOT
     TG4RootNavMgr* fRootNavMgr;     ///< Pointer to RootNavMgr
 #endif
@@ -125,9 +122,9 @@ inline TG4TrackManager* TG4TrackManager::Instance() {
   return fgInstance;
 }
 
-inline void TG4TrackManager::SetMCStack(TMCQueue* mcQueue) {
+inline void TG4TrackManager::SetMCStack(TVirtualMCStack* mcStack) {
   /// Set  cached pointer to thread-local VMC stack
-  fMCQueue = mcQueue;
+  fMCStack = mcStack;
 }
 
 inline void TG4TrackManager::SetTrackSaveControl(TG4TrackSaveControl control) {

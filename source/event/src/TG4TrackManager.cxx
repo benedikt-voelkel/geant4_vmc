@@ -25,8 +25,7 @@
 
 #include <TVirtualMC.h>
 #include <TVirtualMCApplication.h>
-#include <TMCStackManager.h>
-#include <TTrack.h>
+#include <TVirtualMCStack.h>
 
 #include <G4TrackVector.hh>
 #include <G4TrackingManager.hh>
@@ -43,13 +42,12 @@ TG4TrackManager::TG4TrackManager()
   : TG4Verbose("trackManager"),
     fG4TrackingManager(0),
     fTrackSaveControl(kSaveInPreTrack),
-    fMCQueue(0),
+    fMCStack(0),
     fStackPopper(0),
     fSaveDynamicCharge(false),
     fTrackCounter(0),
     fCurrentTrackID(0),
-    fNofSavedSecondaries(0),
-    fMCStackManager(TMCStackManager::Instance())
+    fNofSavedSecondaries(0)
 {
 /// Default constructor
 
@@ -104,14 +102,14 @@ void  TG4TrackManager::ExpectNewPrimaries(G4int nOfPrimaries)
 }
 
 //_____________________________________________________________________________
-void  TG4TrackManager::NotifyOnNewVMCTrack(const TTrack* track)
+void  TG4TrackManager::NotifyOnNewVMCTrack(G4int id, G4int geoStateIndex)
 {
 #ifdef USE_G4ROOT
-  if(track->GeoStateIndex() > -1) {
-    fRootNavMgr->SaveGeometryStatus(fPrimaryParticleIds.size() + 1, track->GeoStateIndex());
+  if(geoStateIndex > -1) {
+    fRootNavMgr->SaveGeometryStatus(fPrimaryParticleIds.size() + 1, geoStateIndex);
   }
 #endif
-  fPrimaryParticleIds.push_back(track->Id());
+  fPrimaryParticleIds.push_back(id);
 }
 
 //_____________________________________________________________________________
@@ -184,7 +182,7 @@ G4int TG4TrackManager::SetTrackInformation(const G4Track* track, G4bool overWrit
   }
 
   // set current track number
-  //fMCStackManager()->SetCurrentTrack(trackIndex);
+  //fMCStack->SetCurrentTrack(trackIndex);
   ++fTrackCounter;
 
   return trackIndex;
@@ -328,14 +326,14 @@ G4int TG4TrackManager::TrackToStack(const G4Track* track, G4bool /*overWrite*/)
   G4int ntr;
 #ifdef STACK_WITH_KEEP_FLAG
   // create particle
-  fMCStackManager
+  fMCStack
     ->PushTrack(0, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                 polX, polY, polZ, -1, mcProcess, ntr, weight, status,
                 overWrite);
         // Experimental code with flagging tracks in stack for overwrite;
         // not yet available in distribution
 #else
-  fMCStackManager
+  fMCStack
     ->PushTrack(0, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                 polX, polY, polZ, -1, mcProcess, ntr, weight, status);
 #endif
@@ -393,7 +391,7 @@ void TG4TrackManager::PrimaryToStack(const G4PrimaryVertex* vertex,
 
   G4int ntr;
   // create particle
-  fMCStackManager->PushTrack(1, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
+  fMCStack->PushTrack(1, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                       polX, polY, polZ, -1, mcProcess, ntr, weight, status);
 }
 
