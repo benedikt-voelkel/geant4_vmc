@@ -7,8 +7,8 @@
 // Contact: root-vmc@cern.ch
 //-------------------------------------------------
 
-/// \file exampleE01LinkDef.h
-/// \brief The CINT link definitions for example E01 classes
+/// \file exampleMELinkDef.h
+/// \brief The CINT link definitions for example ME classes
 
 #ifdef __CINT__
 
@@ -16,10 +16,10 @@
 #pragma link off all classes;
 #pragma link off all functions;
 
-
-#pragma link C++ class  CEMCSingleApplication+;
-#pragma link C++ class  CEMCMultiApplication+;
-#pragma link C++ class  CEMCStack+;
-#pragma link C++ class  CEParticle+;
+#pragma link C++ class  MEMCSingleApplication+;
+#pragma link C++ class  MEMCMultiApplication+;
+#pragma link C++ class  MEMCSingleStack+;
+#pragma link C++ class  MEMCMultiStack+;
+#pragma link C++ class  MEParticle+;
 
 #endif

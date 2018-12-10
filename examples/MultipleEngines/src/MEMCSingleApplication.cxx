@@ -7,19 +7,18 @@
 // Contact: root-vmc@cern.ch
 //-------------------------------------------------
 
-/// \file CEMCMultiApplication.cxx
-/// \brief Implementation of the CEMCMultiApplication class
+/// \file MEMCSingleApplication.cxx
+/// \brief Implementation of the MEMCSingleApplication class
 ///
 /// Geant4 ExampleN01 adapted to Virtual Monte Carlo \n
 ///
-/// \date 05/04/2002
-/// \author I. Hrivnacova; IPN, Orsay
+/// \date 10/12/2018
+/// \author B. Volkel; University Heidelberg
 
-#include "CEMCMultiApplication.h"
-#include "CEMCStack.h"
+#include "MEMCSingleApplication.h"
+#include "MEMCSingleStack.h"
 
 #include <TVirtualMC.h>
-#include <TVirtualMCStack.h>
 
 #include <TGeoManager.h>
 #include <TGeoMatrix.h>
@@ -38,28 +37,23 @@
 using namespace std;
 
 /// \cond CLASSIMP
-ClassImp(CEMCMultiApplication)
+ClassImp(MEMCSingleApplication)
 /// \endcond
 
 //_____________________________________________________________________________
-CEMCMultiApplication::CEMCMultiApplication(const char *name, const char *title)
-  : TVirtualMCMultiApplication(name,title),
+MEMCSingleApplication::MEMCSingleApplication(const char *name, const char *title)
+  : TVirtualMCApplication(name,title),
     fMagField(0),
     fImedAr(0),
     fImedAl(0),
     fImedPb(0),
     fNEventsProcessed(0),
-    fCurrTrackId(0),
-    fCurrGeoTrackId(0),
+    fCurrTrackId(-1),
     fStackSize(100),
-    fNMovedTracks(0),
-    fNTracksG3(0),
-    fNTracksG4(0),
-    fNSecondaries(0),
-    fNSecondariesG3(0),
-    fNSecondariesG4(0),
-    fNGeneratePrimaries(0),
-    fDryRun(kFALSE)
+    fNTracks(0),
+    fNSteps(0),
+    fCurrNTracks(0),
+    fCurrNSteps(0)
 
 {
 /// Standard constructor
@@ -68,58 +62,76 @@ CEMCMultiApplication::CEMCMultiApplication(const char *name, const char *title)
 
   // create magnetic field (with zero value)
   fMagField = new TGeoUniformMagField();
-  fStack = new CEMCStack(fStackSize);
+  fStack = new MEMCSingleStack(fStackSize);
 }
 
 //_____________________________________________________________________________
-CEMCMultiApplication::CEMCMultiApplication()
-  : TVirtualMCMultiApplication(),
+MEMCSingleApplication::MEMCSingleApplication()
+  : TVirtualMCApplication(),
     fMagField(0),
     fImedAr(0),
     fImedAl(0),
     fImedPb(0),
     fNEventsProcessed(0),
-    fCurrTrackId(0),
-    fCurrGeoTrackId(0),
+    fCurrTrackId(-1),
     fStackSize(100),
-    fNMovedTracks(0),
-    fNTracksG3(0),
-    fNTracksG4(0),
-    fNSecondaries(0),
-    fNSecondariesG3(0),
-    fNSecondariesG4(0),
-    fNGeneratePrimaries(0),
-    fDryRun(kFALSE)
+    fNTracks(0),
+    fNSteps(0),
+    fCurrNTracks(0),
+    fCurrNSteps(0)
 {
 /// Default constructor
 }
 
 //_____________________________________________________________________________
-CEMCMultiApplication::~CEMCMultiApplication()
+MEMCSingleApplication::MEMCSingleApplication(const MEMCSingleApplication& rhs)
+  : TVirtualMCApplication(rhs.GetName(), rhs.GetTitle()),
+    fMagField(0),
+    fImedAr(0),
+    fImedAl(0),
+    fImedPb(0),
+    fNEventsProcessed(0),
+    fCurrTrackId(-1),
+    fStackSize(100),
+    fNTracks(0),
+    fNSteps(0),
+    fCurrNTracks(0),
+    fCurrNSteps(0)
+
+{
+/// Standard constructor
+/// \param name   The MC application name
+/// \param title  The MC application description
+
+  // create magnetic field (with zero value)
+  fMagField = new TGeoUniformMagField();
+  fStack = new MEMCSingleStack(rhs.fStackSize);
+}
+
+//_____________________________________________________________________________
+MEMCSingleApplication::~MEMCSingleApplication()
 {
 /// Destructor
   delete fMagField;
 }
 
-void CEMCMultiApplication::ExportGeometry(const char* path) const
+void MEMCSingleApplication::ExportGeometry(const char* path) const
 {
   if(!gGeoManager || !gGeoManager->IsClosed()) {
     Warning("ExportGeometry", "TGeoManager not existing or geometry not closed yet.");
     return;
   }
-  TString fullPath(path);
-  fullPath += "/CE_geometry.root";
-  Info("ExportGeometry", "Export geometry to %s.", fullPath.Data());
-  gGeoManager->Export(fullPath.Data());
+  Info("ExportGeometry", "Export geometry to %s.", path);
+  gGeoManager->Export(path);
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::ConstructMaterials()
+void MEMCSingleApplication::ConstructMaterials()
 {
 /// Construct materials using TGeo modeller
 
   // Create Root geometry manager
-  new TGeoManager("CE_geometry", "CE VMC example geometry");
+  new TGeoManager("ME_geometry", "ME VMC example geometry");
 
   Double_t a;        // Mass of a mole in g/mole
   Double_t z;        // Atomic number
@@ -183,7 +195,7 @@ void CEMCMultiApplication::ConstructMaterials()
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::ConstructVolumes()
+void MEMCSingleApplication::ConstructVolumes()
 {
 /// Contruct volumes using TGeo modeller
 
@@ -248,20 +260,20 @@ void CEMCMultiApplication::ConstructVolumes()
 
 
 //_____________________________________________________________________________
-//TVirtualMCApplication* CEMCMultiApplication::CloneForWorker() const
+//TVirtualMCApplication* MEMCSingleApplication::CloneForWorker() const
 //{
-//  return new CEMCMultiApplication(GetName(), GetTitle());
+//  return new MEMCSingleApplication(GetName(), GetTitle());
 //}
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::InitForWorker() const
+void MEMCSingleApplication::InitForWorker() const
 {
   //gMC->SetStack(fStack);
   //gMC->SetMagField(fMagField);
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::ConstructGeometryMulti()
+void MEMCSingleApplication::ConstructGeometry()
 {
 /// Construct geometry using TGeo functions or
 /// TVirtualMC functions (if oldGeometry is selected)
@@ -272,18 +284,15 @@ void CEMCMultiApplication::ConstructGeometryMulti()
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::InitGeometryMulti()
+void MEMCSingleApplication::InitGeometry()
 {
 /// Initialize geometry.
   Info("InitGeometry", "Init geometry for all engines");
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::GeneratePrimariesMulti()
+void MEMCSingleApplication::GeneratePrimaries()
 {
-
-  // Monitor calls to this method
-  fNGeneratePrimaries++;
 /// Fill the user stack (derived from TVirtualMCStack) with primary particles.
 
  // Track ID (filled by stack)
@@ -293,12 +302,11 @@ void CEMCMultiApplication::GeneratePrimariesMulti()
  Int_t toBeDone = 1;
 
  // Geantino
- Int_t pdg  = 0;
+ Int_t pdg  = 2212;
  // Proton
  //Int_t pdg  = 2212;
  // Electron
  //Int_t pdg  = 11;
-
  // Polarization
  Double_t polx = 0.;
  Double_t poly = 0.;
@@ -317,11 +325,9 @@ void CEMCMultiApplication::GeneratePrimariesMulti()
  pz = 0.;
  e  = 10.;
 
-
-
  // Add particle to stack
- fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx,
-                   poly, polz, kPPrimary, ntr, 1., 0);
+   fStack->PushTrack(toBeDone, -1, pdg, px, py, pz, e, vx, vy, vz, tof, polx,
+                     poly, polz, kPPrimary, ntr, 1., 0);
 
  // Change direction and add particle to stack
 /*
@@ -342,146 +348,123 @@ void CEMCMultiApplication::GeneratePrimariesMulti()
 
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::BeginEventMulti()
+void MEMCSingleApplication::BeginEvent()
 {
-/// User actions at beginning of event.
-/// Nothing to be done this example
+  cout << "----------- Start event " << fNEventsProcessed + 1 << " -----------"
+       << endl;
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::BeginPrimaryMulti()
+void MEMCSingleApplication::BeginPrimary()
 {
 /// User actions at beginning of a primary track.
 /// Nothing to be done this example
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::PreTrackMulti()
+void MEMCSingleApplication::PreTrack()
 {
-/// User actions at beginning of each track.
-/// Print info message.
-  return;
-  // We know our PDG is 0 (geantino), so use this here
-  //fCurrTrackId = gGeoManager->AddTrack(fCurrTrackId, 0);
+  fNTracks++;
+  fCurrNTracks++;
   fCurrTrackId = fStack->GetCurrentTrackNumber();
-
-  //cout << "Starting track " << fCurrTrackId;
-  if(fTrackIdToGeoTrackId.find(fCurrTrackId) == fTrackIdToGeoTrackId.end()) {
-    fTrackIdToGeoTrackId[fCurrTrackId] = gGeoManager->AddTrack(fCurrTrackId, 0);
-    //cout << " (new)";
-    fSteps[fCurrTrackId] = 0;
-  }
-  //cout << endl;
-  fCurrGeoTrackId = fTrackIdToGeoTrackId[fCurrTrackId];
-  fSteps[fCurrTrackId]++;
+  cout << "----------- Start track " << fCurrTrackId << " -----------" << endl;
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::SteppingMulti()
+void MEMCSingleApplication::Stepping()
 {
-/// User actions at each step.
-/// Print track position, the current volume and current medium names.
-
-
+  fNSteps++;
+  fCurrNSteps++;
   TLorentzVector currPosition;
   TLorentzVector currMomentum;
   fMC->TrackPosition(currPosition);
   fMC->TrackMomentum(currMomentum);
-  //Double_t currTof = fMC->TrackTime();
   // Temporary pointer to name
   const char* currentEngineName = fMC->GetName();
 
-  //Info("Stepping", "Stepping in engine %s", currentEngineName);
-
-
-  /*gGeoManager->GetTrack(fCurrGeoTrackId)->AddPoint(currPosition.X(),
-                                                   currPosition.Y(),
-                                                   currPosition.Z(),
-                                                   currPosition.T());*/
-  // Count secondarie
-  fNSecondaries += fMC->NSecondaries();
   // Extract current volume information from VMC
   Int_t copyNo;
   Int_t volID = fMC->CurrentVolID(copyNo);
   // Get spatial information from navigator
-  const Double_t* currPointNav = gGeoManager->GetCurrentPoint();
-  // Int_t volIdGeoMan = gGeoManager->GetCurrentVolume()->GetNumber();
-  /*cout << "\nPosition VMC (t,x,y,z): " << currPosition.T() << ", "
+  cout << "---------------- Step " << fCurrNSteps << " ----------------\n"
+       << "Position VMC (t,x,y,z): " << currPosition.T() << ", "
        << currPosition.X() << " " << currPosition.Y() << " " << currPosition.Z()
        << "\nMomentum (E,px,py,pz): " << currMomentum.E() << ", "
        << currMomentum.Px() << ", " << currMomentum.Py() << ", " << currMomentum.Pz()
        << "\ntrackID: " << fCurrTrackId << ", PDGID: "
        << fMC->TrackPid()
        << "\n(volName: " << fMC->CurrentVolName() << ", id, copyNo: "
-       << volID << ", " << copyNo << ")"
-       << "\nPosition navigator (x,y,z): " << currPointNav[0] << ", "
-       << currPointNav[1] << ", " << currPointNav[2]
-       << " (path nav: " << gGeoManager->GetPath() << ", volid: " << volIdGeoMan << ")" << endl;*/
-       /*
-  cout
-
-
-      << ", #secondaries: " << fMC->NSecondaries()
-      << endl;
-
-
-
-  Int_t currentMed = fMC->CurrentMedium();
-  if (currentMed == fImedAr) cout << "MediumID: " << fImedAr <<  " ArgonGas";
-  if (currentMed == fImedAl) cout << "MediumID: " << fImedAl <<  " Aluminium";
-  if (currentMed == fImedPb) cout << "MediumID: " << fImedPb <<  " Lead";
-  */
+       << volID << ", " << copyNo << ")" << endl;
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::PostTrackMulti()
+void MEMCSingleApplication::PostTrack()
 {
-  // Sum number of tracks processed by respective engines.
-  /*if(strcmp(fMC->GetName(), "TGeant4") == 0) {
-    fNTracksG4++;
-  } else {
-    fNTracksG3++;
-  }*/
+  cout << "----------- Finish track " << fCurrTrackId << " -----------" << endl;
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::FinishPrimaryMulti()
+void MEMCSingleApplication::FinishPrimary()
 {
 /// User actions after finishing of a primary track.
 /// Nothing to be done this example
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::FinishEventMulti()
+void MEMCSingleApplication::FinishEvent()
 {
 /// User actions after finishing of an event
 /// Nothing to be done this example
   fNEventsProcessed++;
-  fStack->ResetStack();
-  //Info("FinishEventMulti", "Finish event in concurrent mode");
-}
-
-void CEMCMultiApplication::Run(Int_t nofEvents)
-{
-  InitTransport();
-  RunTransport(nofEvents);
+  cout << "----------- Finish event " << fNEventsProcessed << " -----------\n"
+       << "number of tracks: " << fCurrNTracks << "\n"
+       << "number of steps: " << fCurrNSteps << endl;
+  fStack->Reset();
+  fCurrNSteps = 0;
+  fCurrNTracks = 0;
 }
 
 //_____________________________________________________________________________
-void CEMCMultiApplication::PrintStatus() const
+void MEMCSingleApplication::InitTransport(std::function<void(TVirtualMC*)>
+                                          customInit)
+{
+  // Check whether there is a TVirtualMCMultiStack and fail if not.
+  if(!fStack) {
+    Fatal("InitMCs","A TVirtualMCMultiStack is required");
+  }
+
+  /// Initialize engine
+  fMC->SetStack(fStack);
+  fMC->SetRootGeometry();
+  customInit(fMC);
+  fMC->Init();
+  fMC->BuildPhysics();
+}
+
+//_____________________________________________________________________________
+void MEMCSingleApplication::RunTransport(Int_t nofEvents)
+{
+  // Check dryrun, so far nothing is done.
+  if(nofEvents < 1) {
+    Info("RunMCs", "Starting dry run.");
+    return;
+  }
+  fMC->ProcessRun(nofEvents);
+}
+
+//_____________________________________________________________________________
+TVirtualMCApplication* MEMCSingleApplication::CloneForWorker() const
+{
+  return new MEMCSingleApplication(*this);
+}
+
+//_____________________________________________________________________________
+void MEMCSingleApplication::PrintStatus() const
 {
   cout << "#############################################\n";
   cout << "########## STATUS of MCApplication ##########\n";
   cout << "#############################################\n";
-  cout << "Number of processed events: " << fNEventsProcessed << "\n";
-  /*
-  cout << "---> Event and track info: \n"
-       << "\t# events processed: " << fNEventsProcessed << "\n"
-       << "\t# tracks transported by TGeant4: " << fNTracksG4 << "\n"
-       << "\t# tracks transported by TGeant3TGeo: " << fNTracksG3 << "\n"
-       << "\t# tracks transferred from TGeant4 to TGeant3TGeo: " << fNMovedTracks << "\n"
-       << "\t# secondaries produced during TGeant4 transport: " << fNSecondariesG4 << "\n"
-       << "\t# secondaries produced during TGeant3TGeo transport: " << fNSecondariesG3 << "\n"
-       << "\t# explicit primary generation: " << fNGeneratePrimaries << "\n"
-  */
+  cout << "Number of processed events: " << fNEventsProcessed << "\n"
+       << "Number of tracks: " << fNTracks << "\n"
+       << "Number of steps: " << fNSteps << endl;
 }

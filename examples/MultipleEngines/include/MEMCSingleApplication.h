@@ -1,5 +1,5 @@
-#ifndef CE_MC_SINGLE_APPLICATION_H
-#define CE_MC_SINGLE_APPLICATION_H
+#ifndef ME_MC_SINGLE_APPLICATION_H
+#define ME_MC_SINGLE_APPLICATION_H
 
 //------------------------------------------------
 // The Virtual Monte Carlo examples
@@ -10,43 +10,48 @@
 // Contact: root-vmc@cern.ch
 //-------------------------------------------------
 
-/// \file CEMCSingleApplication.h
-/// \brief Definition of the CEMCSingleApplication class
+/// \file MEMCSingleApplication.h
+/// \brief Definition of the MEMCSingleApplication class
 ///
 /// Adapting example E01 to demonstrate the usage of GEANT3 and GEANT4 running concurrently.
 ///
-/// \author B. Volkel; Heidelberg University
+/// \author B. Volkel; University Heidelberg
 
 #include <map> // For testing/providing mapping between VMC stack track and TGeoTrack
-
+#include <functional> // customInit in InitTransport
 #include <TVirtualMCApplication.h>
 
 class TVirtualMagField;
-class CEMCStack;
+class MEMCSingleStack;
 
-/// \ingroup ConcurrentEngines
+/// \ingroup ME
 /// \brief Implementation of the TVirtualMCApplication
 ///
-/// \date 02/08/2018
-/// \author B. Volkel; Heidelberg University
+/// \date 10/12/2018
+/// \author B. Volkel; University Heidelberg
 
-class CEMCSingleApplication : public TVirtualMCApplication
+class MEMCSingleApplication : public TVirtualMCApplication
 {
   public:
-    CEMCSingleApplication(const char *name, const char *title);
-    CEMCSingleApplication();
-    virtual ~CEMCSingleApplication();
+    MEMCSingleApplication(const char *name, const char *title);
+    MEMCSingleApplication();
+    virtual ~MEMCSingleApplication();
 
     // static access method
-    static CEMCSingleApplication* Instance();
+    static MEMCSingleApplication* Instance();
 
     // Export the geometry for further inspection
     void ExportGeometry(const char* path = ".") const;
     // Print a summary of the run status.
     void PrintStatus() const;
 
+    /// Init the VMC and simulation
+    void InitTransport(std::function<void(TVirtualMC*)> customInit =
+                                                            [](TVirtualMC*){});
     /// Run the simulation chain
-    void Run(Int_t nofEvents);
+    void RunTransport(Int_t nofEvents);
+
+    virtual TVirtualMCApplication* CloneForWorker() const override;
 
     //virtual TVirtualMCApplication* CloneForWorker() const override;
     virtual void InitForWorker() const  override;
@@ -66,36 +71,32 @@ class CEMCSingleApplication : public TVirtualMCApplication
     // methods
     void ConstructMaterials();
     void ConstructVolumes();
+    MEMCSingleApplication(const MEMCSingleApplication& rhs);
 
     // data members
     TVirtualMagField* fMagField;                 ///< The magnetic field
-    CEMCStack*        fStack;                    ///< The stack
+    MEMCSingleStack*  fStack;                    ///< The stack
     Int_t             fImedAr;                   ///< The Argon gas medium Id
     Int_t             fImedAl;                   ///< The Aluminium medium Id
     Int_t             fImedPb;                   ///< The Lead medium Id
     Int_t             fNEventsProcessed;         ///< Number of processed events
     Int_t             fCurrTrackId;              ///< Id of track currently processed
-    Int_t             fCurrGeoTrackId;           ///< Current TGeoTrack id
     Int_t             fStackSize;                ///< Size of the stack
-    Int_t             fNTracks;                  ///< Number of tracks processed
-    Int_t             fNSecondaries;             ///< All secondaries
-    Int_t             fNGeneratePrimaries;       ///< Monitor number of primary generation
-    Bool_t            fDryRun;                   ///< Having a dryrun
-    // /TVirtualMC*       fCurrentMCEngine
-    std::map<Int_t,Int_t> fTrackIdToGeoTrackId;  ///< Map VMC stack track number to TGeoTrack id used for drawing tracks with TGeoManager
-    std::map<Int_t,Int_t> fSteps;                ///< Monitor the number of steps for a given track number
+    Int_t             fNTracks;                  ///< Count tracks
+    Int_t             fNSteps;                   ///< Count steps
+    Int_t             fCurrNTracks;              ///< Count tracks per event
+    Int_t             fCurrNSteps;               ///< Count steps per event
 
-
-  ClassDefOverride(CEMCSingleApplication,1)  //Interface to MonteCarlo application
+  ClassDefOverride(MEMCSingleApplication,1)  //Interface to MonteCarlo application
 };
 
 // inline functions
 
-inline CEMCSingleApplication* CEMCSingleApplication::Instance()
+inline MEMCSingleApplication* MEMCSingleApplication::Instance()
 {
   /// \return The MC application instance
-  return (CEMCSingleApplication*)(TVirtualMCApplication::Instance());
+  return (MEMCSingleApplication*)(TVirtualMCApplication::Instance());
 }
 
 
-#endif //CE_MC_APPLICATION_H
+#endif // ME_MC_APPLICATION_H

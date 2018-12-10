@@ -14,8 +14,10 @@
 ///
 /// \author A. Gheata; CERN
 
+// TODO remove include
+#include <iostream>
+
 #include "TGeoManager.h"
-#include "TGeoStateCache.h"
 #include "TGeoBranchArray.h"
 
 #include "TG4RootDetectorConstruction.h"
@@ -49,8 +51,7 @@ TG4RootNavigator::TG4RootNavigator()
                   fSafetyOrig(),
                   fLastSafety(0),
                   fNzeroSteps(0),
-                  fG4TrackingManager(0),
-                  fGeoStateCache(TGeoStateCache::Instance())
+                  fG4TrackingManager(0)
 {
 /// Dummy ctor.
 }
@@ -67,10 +68,10 @@ TG4RootNavigator::TG4RootNavigator(TG4RootDetectorConstruction *dc)
                   fSafetyOrig(),
                   fLastSafety(0),
                   fNzeroSteps(0),
-                  fG4TrackingManager(0),
-                  fGeoStateCache(TGeoStateCache::Instance())
+                  fG4TrackingManager(0)
 {
 /// Default ctor.
+   fTrackGeoStates.clear();
    fSafetyOrig.set(kInfinity, kInfinity, kInfinity);
    SetDetectorConstruction(dc);
    SetWorldVolume(dc->GetTopPV());
@@ -348,23 +349,24 @@ TG4RootNavigator::LocateGlobalPointAndSetup(const G4ThreeVector& globalPoint,
 ///                     whether daughter of last mother directly
 ///                     or daughter of that volume's ancestor.
 
+
+
    static Long64_t ilocate = 0;
    ilocate++;
    // Flag if geometry state was recovered.
    Bool_t isGeoStateRestored = kFALSE;
 
-   if(fG4TrackingManager && !fTrackIdGeoStateIndexMap.empty()) {
-     // Check whether this track was registered to have a stored geometry status
-     std::unordered_map<Int_t, Int_t>::iterator it =
-                fTrackIdGeoStateIndexMap.find(fG4TrackingManager->GetTrack()->GetTrackID());
-     if(it != fTrackIdGeoStateIndexMap.end()) {
-       fGeoStateCache->GetGeoState(it->second)->UpdateNavigator(fNavigator);
-       //G4cout << "Update navigator with geo state " << it->second << G4endl;
-       // Now remove this since it has been used and should not randomly be
-       // associated with another track.
-       fTrackIdGeoStateIndexMap.erase(it);
-       isGeoStateRestored = kTRUE;
-       //G4cout << "Geometry state recovered for G4Track " << currentTrackId << G4endl;
+   // Check if geometry could in principle be extracted
+   if(fG4TrackingManager && !fTrackGeoStates.empty()) {
+     Int_t currG4TrackId = fG4TrackingManager->GetTrack()->GetTrackID();
+     if(currG4TrackId < fTrackGeoStates.size()) {
+       // If there is a valid pointer, update navigator and flag
+       // isGeoStateRestored
+       if(fTrackGeoStates[currG4TrackId]) {
+         fTrackGeoStates[currG4TrackId]->UpdateNavigator(fNavigator);
+         fTrackGeoStates[currG4TrackId] = nullptr;
+         isGeoStateRestored = kTRUE;
+       }
      }
    }
 
@@ -563,24 +565,14 @@ G4ThreeVector TG4RootNavigator::GetGlobalExitNormal(const G4ThreeVector& /*point
 }
 
 //______________________________________________________________________________
-void TG4RootNavigator::SaveGeometryStatus()
+void TG4RootNavigator::SaveGeometryStatus(Int_t G4TrackId, TGeoBranchArray const *geoState)
 {
-  Int_t currentTrackId = fG4TrackingManager->GetTrack()->GetTrackID();
-  Int_t geoStateIndex = fNavigator->PushPoint();
-  fTrackIdGeoStateIndexMap[currentTrackId] = geoStateIndex;
+  if(G4TrackId >= fTrackGeoStates.size()) {
+    fTrackGeoStates.resize(2 * fTrackGeoStates.size() + 1, nullptr);
+  }
+  fTrackGeoStates[G4TrackId] = geoState;
   #ifdef G4ROOT_DEBUG
-     G4cout << "Saved geometry state index " << geoStateIndex << " for track "
-            << currentTrackId << G4endl;
-  #endif
-}
-
-//______________________________________________________________________________
-void TG4RootNavigator::SaveGeometryStatus(Int_t G4TrackId, Int_t geoStateIndex)
-{
-  fTrackIdGeoStateIndexMap[G4TrackId] = geoStateIndex;
-  #ifdef G4ROOT_DEBUG
-     G4cout << "Saved geometry state index " << geoStateIndex << " for track "
-            << G4TrackId << G4endl;
+     G4cout << "Saved geometry state index for track " << G4TrackId << G4endl;
   #endif
 }
 
@@ -592,5 +584,9 @@ void TG4RootNavigator::SetG4TrackingManager(G4TrackingManager* trackingManager)
 
 void TG4RootNavigator::PrepareNewEvent()
 {
-  fTrackIdGeoStateIndexMap.clear();
+  // NOTE Just set to nullptr since in the next event similar number of tracks
+  //      is expected so keep size.
+  for(auto& gs : fTrackGeoStates) {
+    gs = nullptr;
+  }
 }

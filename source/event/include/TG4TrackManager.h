@@ -29,6 +29,7 @@ class TG4TrackInformation;
 class TG4StackPopper;
 
 class TVirtualMCStack;
+class TGeoBranchArray;
 
 class G4Track;
 class G4PrimaryVertex;
@@ -58,7 +59,10 @@ class TG4TrackManager : public TG4Verbose
     void  LateInitialize();
     void  AddPrimaryParticleId(G4int id);
     void  ExpectNewPrimaries(G4int nOfPrimaries);
-    void  NotifyOnNewVMCTrack(G4int id, G4int geoStateIndex);
+    #ifdef USE_G4ROOT
+      void  NotifyOnNewVMCTrack(G4int id, TGeoBranchArray const *geoState);
+    #endif
+    G4bool HasPoppedFromVMCStack() const;
     G4int SetTrackInformation(const G4Track* aTrack, G4bool overWrite = false);
     void  SetParentToTrackInformation(const G4Track* aTrack);
     void  SetBackPDGLifetime(const G4Track* aTrack);
@@ -70,7 +74,7 @@ class TG4TrackManager : public TG4Verbose
     void  SaveSecondaries(const G4Track* track, const G4TrackVector* secondaries);
 
     // set methods
-    void SetMCStack(TVirtualMCStack*  stack);
+    void SetMCStack(TVirtualMCStack*  mcStack);
     void SetTrackSaveControl(TG4TrackSaveControl control);
     void SetSaveDynamicCharge(G4bool saveDynamicCharge);
     void SetNofTracks(G4int nofTracks);
@@ -109,6 +113,8 @@ class TG4TrackManager : public TG4Verbose
     G4int   fTrackCounter;          ///< tracks counter
     G4int   fCurrentTrackID;        ///< current track ID
     G4int   fNofSavedSecondaries;   ///< number of secondaries already saved
+    G4bool  fPoppedFromVMCStack;    ///< Flag if particles were popped from VMC
+                                    ///< stack
 #ifdef USE_G4ROOT
     TG4RootNavMgr* fRootNavMgr;     ///< Pointer to RootNavMgr
 #endif

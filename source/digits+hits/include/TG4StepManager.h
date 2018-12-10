@@ -106,8 +106,8 @@ class TG4StepManager
         // tracking particle
         // dynamic properties
     void TrackPosition(TLorentzVector& position) const;
-    void TrackPosition(Double_t& x, Double_t& y, Double_t& z, Double_t& t) const;
-    void TrackPosition(Float_t& x, Float_t& y, Float_t& z, Float_t &t) const;
+    void TrackPosition(Double_t& x, Double_t& y, Double_t& z) const;
+    void TrackPosition(Float_t& x, Float_t& y, Float_t& z) const;
     void TrackMomentum(TLorentzVector& momentum) const;
     void TrackMomentum(Double_t& px, Double_t& py, Double_t&pz,
                        Double_t& etot) const;

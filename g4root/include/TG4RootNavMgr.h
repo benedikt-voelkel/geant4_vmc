@@ -27,6 +27,7 @@ class TGeoManager;
 class TG4RootNavigator;
 class TG4RootDetectorConstruction;
 class TVirtualUserPostDetConstruction;
+class TGeoBranchArray;
 
 class G4TrackingManager;
 
@@ -70,16 +71,12 @@ public:
                          /// Return the G4 geometry built based on ROOT one
    TG4RootDetectorConstruction *GetDetConstruction() const {return fDetConstruction;}
 
-   /// Push current geometry status of the TGeoNavigator assuming it belongs to
-   /// the G4Track currently processed.
-   /// Wrapper around the TG4RootNavigator::SaveGeometryStatus()
-   void SaveGeometryStatus();
    /// Notify the TG4RootNvMgr and the therefore the TG4RootNavigator about
    /// a geometry status which has been pushed to the TGeoNavigator passing
    /// the index returned by the TGeoNavigator and the corresponging G4Track
    /// object.
    /// Wrapper around the TG4RootNavigator::SaveGeometryStatus(Int_t G4TrackId, Int_t geoStateIndex)
-   void SaveGeometryStatus(Int_t G4TrackId, Int_t geoStateIndex);
+   void SaveGeometryStatus(Int_t G4TrackId, TGeoBranchArray const *geoState);
    /// Initialisation steps which are only possible when the G4EventManager
    /// and the G4TrackingManager have been instantiated.
    void SetG4TrackingManager(G4TrackingManager* trackingManager);

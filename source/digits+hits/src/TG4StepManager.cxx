@@ -350,13 +350,10 @@ G4VPhysicalVolume* TG4StepManager::GetCurrentPhysicalVolume() const
 
   if ( fStepStatus == kGflashSpot )
     return fGflashSpot->GetTouchableHandle()->GetVolume();
-  // \note added verbosity
   else if ( fStepStatus != kBoundary ) {
-    //G4cout << "G4 internal: Step not on boundary" << G4endl;
     return fTrack->GetVolume();
   }
   else {
-    //G4cout << "G4 internal: Step on boundary" << G4endl;
     return fTrack->GetNextVolume();
   }
 }
@@ -769,7 +766,7 @@ void TG4StepManager::TrackPosition(TLorentzVector& position) const
 }
 
 //_____________________________________________________________________________
-void TG4StepManager::TrackPosition(Double_t& x, Double_t& y, Double_t& z, Double_t& t) const
+void TG4StepManager::TrackPosition(Double_t& x, Double_t& y, Double_t& z) const
 {
 /// Fill the current particle position in the world reference frame
 /// (position in the PostStepPoint).
@@ -789,30 +786,23 @@ void TG4StepManager::TrackPosition(Double_t& x, Double_t& y, Double_t& z, Double
   }
   positionVector *= 1./(TG4G3Units::Length());
 
-  // global time
-  G4double time = fTrack->GetGlobalTime();
-  time /= TG4G3Units::Time();
-
   x = positionVector.x();
   y = positionVector.y();
   z = positionVector.z();
-  t = time;
 }
 
 //_____________________________________________________________________________
-void TG4StepManager::TrackPosition(Float_t& x, Float_t& y, Float_t& z, Float_t &t) const
+void TG4StepManager::TrackPosition(Float_t& x, Float_t& y, Float_t& z) const
 {
 /// Fill the current particle position in the world reference frame
 /// (position in the PostStepPoint) as float.
 
-  Double_t dx, dy, dz, dt;
-  TrackPosition(dx, dy, dz, dt);
+  Double_t dx, dy, dz;
+  TrackPosition(dx, dy, dz);
 
   x = static_cast<float>(dx);
   y = static_cast<float>(dy);
   z = static_cast<float>(dz);
-  t = static_cast<float>(dt);
-
 }
 
 //_____________________________________________________________________________

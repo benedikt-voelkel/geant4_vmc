@@ -54,6 +54,9 @@ TG4TrackingAction::TG4TrackingAction()
     fOverwriteLastTrack(false),
     fNewVerboseLevel(0),
     fNewVerboseTrackID(-1)
+    #ifdef USE_G4ROOT
+      ,fBranchArrayContainer(0)
+    #endif
 {
 /// Default constructor
 
@@ -157,6 +160,7 @@ void TG4TrackingAction::PrepareNewEvent()
   // geometry states attached to VMC tracks.
   fTrackManager->NotifyNavigator();
 
+
   if ( fTrackManager->GetTrackSaveControl() != kDoNotSave )
     fTrackManager->SetNofTracks(0);
   else
@@ -202,7 +206,10 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
     = fTrackManager->SetTrackInformation(track, fOverwriteLastTrack);
     // Do that here in case the track is already known i.e. either a primary or a
     // secondary pushed to the VMC stack in the step it was produced
-  fMCStack->SetCurrentTrack(trackId);
+    // Only set VMC track ID if valid ID >= 0
+    if(trackId > -1) {
+      fMCStack->SetCurrentTrack(trackId);
+    }
 
   if ( isFirstStep ) {
     if (track->GetParentID() == 0) {
@@ -238,6 +245,14 @@ void TG4TrackingAction::PreUserTrackingAction(const G4Track* track)
     }
   }
 
+  // Free geo state if any since it has been digested by the TG4TG4RootNavigator
+  // by now.
+  #ifdef USE_G4ROOT
+    Int_t geoStateIndex = fMCStack->GetCurrentTrackGeoStateIndex();
+    if(geoStateIndex > -1 && fBranchArrayContainer) {
+      fBranchArrayContainer->FreeGeoState(geoStateIndex);
+    }
+  #endif
 
   // verbose
   if ( track->GetTrackID() == fNewVerboseTrackID) {

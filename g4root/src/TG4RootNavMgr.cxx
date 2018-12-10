@@ -18,6 +18,7 @@
 #include "TG4RootNavigator.h"
 #include "TG4RootDetectorConstruction.h"
 #include "TG4RootNavMgr.h"
+#include "TGeoBranchArray.h"
 
 #include "G4RunManager.hh"
 #include "G4TransportationManager.hh"
@@ -204,15 +205,9 @@ void TG4RootNavMgr::PrintG4State() const
 }
 
 //______________________________________________________________________________
-void TG4RootNavMgr::SaveGeometryStatus()
+void TG4RootNavMgr::SaveGeometryStatus(Int_t G4TrackId, TGeoBranchArray const *geoState)
 {
-  fNavigator->SaveGeometryStatus();
-}
-
-//______________________________________________________________________________
-void TG4RootNavMgr::SaveGeometryStatus(Int_t G4TrackId, Int_t geoStateIndex)
-{
-  fNavigator->SaveGeometryStatus(G4TrackId, geoStateIndex);
+  fNavigator->SaveGeometryStatus(G4TrackId, geoState);
 }
 
 //______________________________________________________________________________

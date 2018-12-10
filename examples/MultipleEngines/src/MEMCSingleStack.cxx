@@ -7,38 +7,43 @@
 // Contact: root-vmc@cern.ch
 //-------------------------------------------------
 
-/// \file CEMCStack.cxx
-/// \brief Implementation of the CEMCStack class
+/// \file MEMCSingleStack.cxx
+/// \brief Implementation of the MEMCSingleStack class
 ///
 /// Geant4 ExampleN01 adapted to Virtual Monte Carlo
 ///
-/// \date 05/04/2002
-/// \author I. Hrivnacova; IPN, Orsay
+/// \date 10/12/2018
+/// \author B. Volkel; University Heidelberg
 
-#include "CEMCStack.h"
+#include <iostream>
+
+#include "MEMCSingleStack.h"
+#include "MEParticle.h"
 
 #include <TParticle.h>
 #include <TObjArray.h>
 #include <TError.h>
 
 /// \cond CLASSIMP
-ClassImp(CEMCStack)
+ClassImp(MEMCSingleStack)
 /// \endcond
 
 //_____________________________________________________________________________
-CEMCStack::CEMCStack(Int_t size)
-  : fTracks(0),
+MEMCSingleStack::MEMCSingleStack(Int_t size)
+  : TVirtualMCStack(),
+    fParticles(0),
     fCurrentTrack(-1),
     fNPrimary(0)
 {
 /// Standard constructor
 /// \param size  The stack size
-  fTracks = new TObjArray(size);
+  fParticles = new TObjArray(size);
 }
 
 //_____________________________________________________________________________
-CEMCStack::CEMCStack()
-  : fTracks(0),
+MEMCSingleStack::MEMCSingleStack()
+  : TVirtualMCStack(),
+    fParticles(0),
     fCurrentTrack(-1),
     fNPrimary(0)
 {
@@ -46,41 +51,44 @@ CEMCStack::CEMCStack()
 }
 
 //_____________________________________________________________________________
-CEMCStack::~CEMCStack()
+MEMCSingleStack::~MEMCSingleStack()
 {
 /// Destructor
 
-  if (fTracks) fTracks->Delete();
-  delete fTracks;
+  if (fParticles) fParticles->Delete();
+  delete fParticles;
 }
 
 // private methods
 
 //_____________________________________________________________________________
-TParticle*  CEMCStack::GetTrack(Int_t id) const
+MEParticle*  MEMCSingleStack::GetParticle(Int_t id) const
 {
 /// \return   The \em id -th particle in fParticles
 /// \param id The index of the particle to be returned
 
-  if (id < 0 || id >= fTracks->GetEntriesFast())
-    Fatal("GetTrack", "Index out of range");
+  if (id < 0 || id >= fParticles->GetEntriesFast())
+    Fatal("GetParticle", "Index out of range");
 
-  return (TParticle*)fTracks->At(id);
+  return (MEParticle*)fParticles->At(id);
 }
 
 
 // public methods
 
 //_____________________________________________________________________________
-void CEMCStack::ResetStack()
+void MEMCSingleStack::Reset()
 {
-   fTracks->Delete();
-   //fTracks->Expand(fSize);
-
+   fParticles->Clear();
+   fNPrimary = 0;
+   fCurrentTrack = -1;
+   while(!fStack.empty()) {
+     fStack.pop();
+   }
 }
 
 //_____________________________________________________________________________
-void  CEMCStack::PushTrack(Int_t toBeDone, Int_t parent, Int_t pdg,
+void  MEMCSingleStack::PushTrack(Int_t toBeDone, Int_t parent, Int_t pdg,
   	                       Double_t px, Double_t py, Double_t pz, Double_t e,
   		                     Double_t vx, Double_t vy, Double_t vz, Double_t tof,
 		                       Double_t polx, Double_t poly, Double_t polz,
@@ -111,76 +119,63 @@ void  CEMCStack::PushTrack(Int_t toBeDone, Int_t parent, Int_t pdg,
 
   const Int_t kFirstDaughter=-1;
   const Int_t kLastDaughter=-1;
-  // Set track number already at beginning and forward to TParticle constructor
-  ntr = GetNtrack();
-  TParticle* mother = 0;
-  if (parent>=0) {
-    mother = GetTrack(parent);
-  } else {
+
+  TParticle* particleDef
+    = new TParticle(pdg, is, parent, -1, kFirstDaughter, kLastDaughter,
+         px, py, pz, e, vx, vy, vz, tof);
+
+  particleDef->SetPolarisation(polx, poly, polz);
+  particleDef->SetWeight(weight);
+  particleDef->SetUniqueID(mech);
+
+  MEParticle* mother = 0;
+  if ( parent >= 0 )
+    mother = GetParticle(parent);
+  else
     fNPrimary++;
-  }
-  TParticle* track = new TParticle(ntr, pdg, is, mother, px, py, pz, e, vx, vy, vz, tof,
-                             -1);
-  // Add this track as child to parent track
-  if(mother) {
-    mother->AddChild(track);
-  }
 
-  track->SetPolarisation(polx, poly, polz);
-  track->SetWeight(weight);
-  track->SetUniqueID(mech);
+  MEParticle* particle = new MEParticle(fParticles->GetEntriesFast(), particleDef, mother);
+  if (mother) mother->AddDaughter(particle);
+  fParticles->Add(particle);
 
-  fTracks->Add(track);
+  if (toBeDone) fStack.push(particle);
 
-  if (toBeDone) {
-    fStack.push(track);
-  }
-
-  //Info("PushTrack", "Pushed track with id %i", ntr);
+  ntr = fParticles->GetEntriesFast() - 1;
 }
 
 //_____________________________________________________________________________
-TParticle* CEMCStack::PopNextTrack(Int_t& itrack)
+TParticle* MEMCSingleStack::PopNextTrack(Int_t& itrack)
 {
 /// Get next particle for tracking from the stack.
 /// \return        The popped particle object
 /// \param itrack  The index of the popped track
 
   itrack = -1;
-  if (fStack.empty()) {
-    return 0;
-  }
+  if  (fStack.empty()) return 0;
 
-  TParticle* track = fStack.top();
+  MEParticle* particle = fStack.top();
   fStack.pop();
 
-  if (!track) {
-    return 0;
-  }
+  if (!particle) return 0;
 
-  itrack = track->Id();
+  itrack = particle->GetID();
   fCurrentTrack = itrack;
 
-  return track;
+  return particle->GetParticle();
 }
 
 //_____________________________________________________________________________
-TParticle* CEMCStack::PopPrimaryForTracking(Int_t i)
+TParticle* MEMCSingleStack::PopPrimaryForTracking(Int_t i)
 {
-/// Return \em i -th particle in fParticles.
-/// \return   The popped primary particle object
-/// \param i  The index of primary particle to be popped
+/// Get next particle for tracking from the stack.
+/// \return        The popped particle object
+/// \param itrack  The index of the popped track
 
-  Info("PopPrimaryForTracking", "Trying to pop primary %i from stack where there are %i primaries in total", i, fNPrimary);
-  if (i < 0 || i >= fNPrimary) {
-    Fatal("PopPrimaryForTracking", "Index out of range");
-  }
-
-  return (TParticle*)fTracks->At(i);
+  return nullptr;
 }
 
 //_____________________________________________________________________________
-void  CEMCStack::SetCurrentTrack(Int_t itrack)
+void  MEMCSingleStack::SetCurrentTrack(Int_t itrack)
 {
 /// Set the current track number to a given value.
 /// \param  itrack The current track number
@@ -189,23 +184,15 @@ void  CEMCStack::SetCurrentTrack(Int_t itrack)
 }
 
 //_____________________________________________________________________________
-Int_t  CEMCStack::GetNtrackToDo() const
+Int_t  MEMCSingleStack::GetNtrack() const
 {
 /// \return  The total number of all tracks.
 
-  return fStack.size();
+  return fParticles->GetEntriesFast();
 }
 
 //_____________________________________________________________________________
-Int_t  CEMCStack::GetNtrack() const
-{
-/// \return  The total number of all tracks.
-
-  return fTracks->GetEntriesFast();
-}
-
-//_____________________________________________________________________________
-Int_t  CEMCStack::GetNprimary() const
+Int_t  MEMCSingleStack::GetNprimary() const
 {
 /// \return  The total number of primary tracks.
 
@@ -213,42 +200,50 @@ Int_t  CEMCStack::GetNprimary() const
 }
 
 //_____________________________________________________________________________
-TParticle* CEMCStack::GetCurrentTrack() const
+TParticle* MEMCSingleStack::GetCurrentTrack() const
 {
 /// \return  The current track particle
 
-  TParticle* current = GetTrack(fCurrentTrack);
+  MEParticle* current = GetParticle(fCurrentTrack);
 
-  if (current) {
-    return  current;
-  } else {
+  if (current)
+    return  current->GetParticle();
+  else
     return 0;
-  }
 }
 
 //_____________________________________________________________________________
-Int_t  CEMCStack::GetCurrentTrackNumber() const
+Int_t  MEMCSingleStack::GetCurrentTrackNumber() const
 {
 /// \return  The current track number
 
   return fCurrentTrack;
 }
+
 //_____________________________________________________________________________
-Int_t  CEMCStack::GetCurrentParentTrackNumber() const
+Int_t  MEMCSingleStack::GetCurrentParentTrackNumber() const
 {
 /// \return  The current track parent ID.
 
-  TParticle* current = GetTrack(fCurrentTrack);
+  MEParticle* current = GetParticle(fCurrentTrack);
 
-  if (!current) {
-    return -1;
+  if (!current) return -1;
+
+  MEParticle* mother = current->GetMother();
+
+  if (!mother) return -1;
+
+  return mother->GetID();
+}
+
+//_____________________________________________________________________________
+void MEMCSingleStack::PrintStack() const
+{
+  std::cerr << "Print tracks on stack\n"
+            << "\t#particles: " << fParticles->GetEntriesFast() << "\n";
+  for(Int_t i = 0; i < fParticles->GetEntriesFast(); i++) {
+    std::cerr << "+++++++++++++ particle " << i << "+++++++++++++\n";
+    (dynamic_cast<MEParticle*>(fParticles->At(i)))->GetParticle()->Print();
+    std::cerr << "\n";
   }
-
-  const TParticle* parent = current->GetParent();
-
-  if (!parent) {
-    return -1;
-  }
-
-  return parent->Id();
 }

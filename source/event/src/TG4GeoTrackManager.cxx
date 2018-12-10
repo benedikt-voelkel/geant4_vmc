@@ -94,8 +94,8 @@ void TG4GeoTrackManager::UpdateRootTrack(const G4Step* step)
    }
 
    // Skip point if its distance from the previous one is smaller than the limit
-   Double_t x, y, z, t;
-   gMC->TrackPosition(x, y, z, t);
+   Double_t x, y, z;
+   gMC->TrackPosition(x, y, z);
    Bool_t skipPoint = kFALSE;
    if ( fCurrentTGeoTrack->HasPoints() ) {
       Double_t xo,yo,zo,to;
@@ -106,9 +106,10 @@ void TG4GeoTrackManager::UpdateRootTrack(const G4Step* step)
    if ( skipPoint ) return;
 
    // Add point to the track
-   fCurrentTGeoTrack->AddPoint(x, y, z, t);
+   G4double time = gMC->TrackTime();
+   fCurrentTGeoTrack->AddPoint(x, y, z, time);
    if ( VerboseLevel() > 2 ) {
      G4cout << "Added point (x,y,z,t)="
-            << x << ", " << y << ", " << z << ", " << t << G4endl;
+            << x << ", " << y << ", " << z << ", " << time << G4endl;
    }
 }

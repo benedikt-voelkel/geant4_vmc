@@ -1,3 +1,8 @@
+
+
+
+
+
 //------------------------------------------------
 // The Geant4 Virtual Monte Carlo package
 // Copyright (C) 2007 - 2015 Ivana Hrivnacova
@@ -154,6 +159,61 @@ void TG4GeometryManager::CreateMCGeometry()
   }
 }
 
+
+//_____________________________________________________________________________
+void TG4GeometryManager::ConstructG4GeometryViaVMC()
+{
+/// Create G4 geometry objects according to the G3VolTable
+
+#ifdef USE_G3TOG4
+  if ( VerboseLevel() > 1 )
+    G4cout << "TG4GeometryManager::ConstructG4GeometryViaVMC" << G4endl;
+
+  // check if G4 tables were filled
+/*
+  if ( ! TG4G3MCGeometry::Instance()->IsGeometryDefined() ) {
+    TG4Globals::Exception(
+      "TG4GeometryManager", "ConstructG4GeometryViaVMC",
+      "Geometry was not defined via VMC.");
+  }
+*/
+  // pass info about using G3toG4 to geometry services
+  fGeometryServices->SetIsG3toG4(true);
+
+  // set the first entry in the G3Vol table
+  G4ggclos();
+  G3VolTableEntry* first = G3Vol.GetFirstVTE();
+
+  // transform MANY to Boolean solids
+  G3toG4MANY(first);
+
+  // create G4 geometry
+  G3toG4BuildTree(first,0);
+
+  // fill medium map
+  // FillMediumMapFromG3();
+
+  // position the first entry with copyNo = 1
+  // (in Geant3 the top volume cannot be positioned)
+  //
+  if (!fGeometryServices->GetWorld()) {
+    G4VPhysicalVolume* world
+       = new G4PVPlacement(0, G4ThreeVector(), first->GetName(),
+                           first->GetLV(), 0, false, 1);
+    fGeometryServices->SetWorld(world);
+  }
+
+  // print G3 volume table statistics
+  G3Vol.VTEStat();
+
+#else
+  TG4Globals::Exception(
+    "TG4GeometryManager", "ConstructG4GeometryViaVMC",
+    "Geant4 VMC has been installed without G3toG4." + TG4Globals::Endl() +
+    "Geometry construction via VMC is not supported.");
+#endif
+}
+
 //_____________________________________________________________________________
 void TG4GeometryManager::ConstructG4GeometryViaVGM()
 {
@@ -222,6 +282,48 @@ void TG4GeometryManager::ConstructG4Geometry()
            << "userGeometry=" << fUserGeometry << G4endl;
   }
 
+
+  // VMC application construct geometry
+  if ( fUserGeometry == "VMCtoGeant4" ) {
+
+    if ( VerboseLevel() > 1 )
+      G4cout << "Running TVirtualMCApplication::ConstructGeometry" << G4endl;
+
+    TG4StateManager::Instance()->SetNewState(kConstructGeometry);
+    TVirtualMCApplication::Instance()->ConstructGeometry();
+    TG4StateManager::Instance()->SetNewState(kMisalignGeometry);
+    TVirtualMCApplication::Instance()->MisalignGeometry();
+    TG4StateManager::Instance()->SetNewState(kNotInApplication);
+  }
+
+  // VMC application construct geometry
+  if ( fUserGeometry == "RootToGeant4" ) {
+
+    if ( VerboseLevel() > 1 )
+      G4cout << "Running TVirtualMCApplication::ConstructGeometry" << G4endl;
+
+    TG4StateManager::Instance()->SetNewState(kConstructGeometry);
+    TVirtualMCApplication::Instance()->ConstructGeometry();
+    TG4StateManager::Instance()->SetNewState(kNotInApplication);
+
+    // If Root geometry was not closed by user
+    // we have to do it here
+    if ( ! gGeoManager->IsClosed() ) {
+      TGeoVolume *top = (TGeoVolume*)gGeoManager->GetListOfVolumes()->First();
+      gGeoManager->SetTopVolume(top);
+      gGeoManager->CloseGeometry();
+    }
+
+    TG4StateManager::Instance()->SetNewState(kMisalignGeometry);
+    TVirtualMCApplication::Instance()->MisalignGeometry();
+    TG4StateManager::Instance()->SetNewState(kNotInApplication);
+  }
+
+  // Build G4 geometry
+  if ( fUserGeometry == "VMCtoGeant4" )
+
+    ConstructG4GeometryViaVMC();
+
   if ( fUserGeometry == "RootToGeant4" )
     ConstructG4GeometryViaVGM();
 
@@ -234,6 +336,80 @@ void TG4GeometryManager::ConstructG4Geometry()
            << fGeometryServices->NofG4PhysicalVolumes()
            << " physical volumes" << G4endl;
   }
+}
+
+//_____________________________________________________________________________
+void TG4GeometryManager::FillMediumMapFromG3()
+{
+/// Map G3 tracking medium IDs to volumes names.
+
+#ifdef USE_G3TOG4
+  if ( VerboseLevel() > 1 )
+    G4cout << "TG4GeometryManager::FillMediumMapFromG3()" << G4endl;
+
+  TG4MediumMap* mediumMap = fGeometryServices->GetMediumMap();
+
+  // Create medium for each medium entry
+   for ( G4int i=0; i<G4int(G3Med.GetSize()); i++ ) {
+    G3MedTableEntry* mediumEntry = G3Med.GetMTE(i);
+    G4int mediumID = mediumEntry->GetID();
+
+    if ( VerboseLevel() > 2 ) {
+      G4cout << "Getting medium ID=" << mediumID << G4endl;
+    }
+    // Get medium from medium map
+    TG4Medium* medium = mediumMap->GetMedium(mediumID);
+
+    // Create a medium if it does not exist
+    // (This should not happen, but let's check it anyway)
+    if ( ! medium ) {
+      medium = mediumMap->AddMedium(mediumID, false);
+
+      TString message = "Medium ";
+      message += mediumID;
+      message += " was not found in medium map. New medium will be created";
+      TG4Globals::Warning("TG4GeometryManager", "FillMediumMapFromG3", message);
+    }
+
+    medium->SetLimits(mediumEntry->GetLimits());
+    medium->SetMaterial(mediumEntry->GetMaterial());
+  }
+
+  if ( VerboseLevel() > 2 )
+    G3Vol.PrintAll();
+
+  // Map media to logical volumes
+  G4LogicalVolumeStore* lvStore = G4LogicalVolumeStore::GetInstance();
+  for ( G4int i=0; i<G4int(lvStore->size()); i++) {
+    G4LogicalVolume* lv  = (*lvStore)[i];
+
+    // Get medium ID from G3 tables
+    G4String name  = lv->GetName();
+    G4String g3Name(name);
+    // Filter out the reflected volume name extension
+    // added by reflection factory
+    G4String ext = G4ReflectionFactory::Instance()->GetVolumesNameExtension();
+    if (name.find(ext)) g3Name = g3Name.substr(0, g3Name.find(ext));
+    G4int mediumID = G3Vol.GetVTE(g3Name)->GetNmed();
+
+    if ( VerboseLevel() > 2 )
+      G4cout << "Mapping medium Id " << mediumID << " to LV "<< name << G4endl;
+
+    // Map medium to LV
+    mediumMap->MapMedium(lv, mediumID);
+  }
+
+  // clear G3 tables
+  G3Vol.Clear();
+  G3SensVol.clear();
+  G3Mat.Clear();
+  G3Med.Clear();
+#else
+  TG4Globals::Exception(
+    "TG4GeometryManager", "FillMediumMapFromG3",
+    "Geant4 VMC has been installed without G3toG4." + TG4Globals::Endl() +
+    "Geometry construction via VMC is not supported.");
+#endif
 }
 
 //_____________________________________________________________________________
@@ -372,6 +548,9 @@ void TG4GeometryManager::FillMediumMapFromRoot()
 void TG4GeometryManager::FillMediumMap()
 {
 /// Fill medium map depending on user geometry source
+
+  if ( fUserGeometry == "VMCtoGeant4" )
+    FillMediumMapFromG3();
 
   if ( fUserGeometry == "VMCtoRoot" ||
        fUserGeometry == "Root"  ||
@@ -613,9 +792,9 @@ void TG4GeometryManager::ConstructGeometry()
   FillMediumMap();
 
   // VMC application construct geometry for optical processes
-  //TG4StateManager::Instance()->SetNewState(kConstructOpGeometry);
-  //TVirtualMCApplication::Instance()->ConstructOpGeometry();
-  //TG4StateManager::Instance()->SetNewState(kNotInApplication);
+  TG4StateManager::Instance()->SetNewState(kConstructOpGeometry);
+  TVirtualMCApplication::Instance()->ConstructOpGeometry();
+  TG4StateManager::Instance()->SetNewState(kNotInApplication);
 
   // Construct user regions
   if ( fUserRegionConstruction ) fUserRegionConstruction->Construct();

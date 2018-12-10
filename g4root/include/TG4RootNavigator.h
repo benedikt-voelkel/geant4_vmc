@@ -19,7 +19,7 @@
 
 // For mapping index of geometry state cached in TGeoNavigator to G4Track id.
 // \note \todo Can we use something faster/more efficient than std::map?
-#include <unordered_map>
+#include <vector>
 
 #ifndef G4NAVIGATOR_HH
 #include "G4Navigator.hh"
@@ -29,10 +29,10 @@
 
 class TGeoManager;
 class TGeoNavigator;
-class TGeoStateCache;
 class TGeoNode;
 class TG4RootDetectorConstruction;
 class G4TrackingManager;
+class TGeoBranchArray;
 
 /// \brief GEANT4 navigator using directly a TGeo geometry.
 ///
@@ -57,10 +57,8 @@ protected:
    Int_t                 fNzeroSteps;      ///< Number of zero steps in ComputeStep
 
    G4TrackingManager* fG4TrackingManager;    ///< Store pointer to G4TrackingManager
-   std::unordered_map<Int_t,Int_t> fTrackIdGeoStateIndexMap; ///< Mapping geometry state
-                                                   ///< index cached in TGeoNavigator
-                                                   ///< to G4Track id
-    TGeoStateCache* fGeoStateCache;    ///< Pointer to access cached geo states
+   std::vector<TGeoBranchArray const*> fTrackGeoStates; ///< Mapping geometry state
+                                                  ///< to G4Track id
 private:
    G4VPhysicalVolume *SynchronizeHistory();
    TGeoNode          *SynchronizeGeoManager();
@@ -116,14 +114,11 @@ public:
     // These methods takes full care about how to calculate this normal,
     // but if the surfaces are not convex it will return valid=false.
 
-    /// Push current geometry status of the TGeoNavigator assuming it belongs to
-    /// the G4Track currently processed.
-    void SaveGeometryStatus();
     /// Notify the TG4RootNvMgr and the therefore the TG4RootNavigator about
     /// a geometry status which has been pushed to the TGeoNavigator passing
     /// the index returned by the TGeoNavigator and the corresponging G4Track
     /// object.
-    void SaveGeometryStatus(Int_t G4TrackId, Int_t geoStateIndex);
+    void SaveGeometryStatus(Int_t G4TrackId, TGeoBranchArray const *geoState);
     /// Initialisation steps which are only possible when the G4EventManager
     /// and the G4TrackingManager have been instantiated.
     void SetG4TrackingManager(G4TrackingManager* trackingManager);

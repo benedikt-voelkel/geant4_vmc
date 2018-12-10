@@ -35,6 +35,9 @@
 #include "TG4RegionsManager.h"
 #include "TG4TrackManager.h"
 #include "TG4StackPopper.h"
+#ifdef USE_G4ROOT
+  #include "TGeoMCBranchArrayContainer.h"
+#endif
 
 #ifdef G4MULTITHREADED
 #include <G4MTRunManager.hh>
@@ -197,6 +200,26 @@ void TG4RunManager::ConfigureRunManager()
 #ifdef USE_G4ROOT
   TG4RootNavMgr* rootNavMgr = 0;
   if ( userGeometry == "VMCtoRoot" || userGeometry == "Root" ) {
+
+    // Construct geometry via VMC application
+    if ( TG4GeometryManager::Instance()->VerboseLevel() > 0 )
+      G4cout << "Running TVirtualMCApplication::ConstructGeometry";
+    TG4StateManager::Instance()->SetNewState(kConstructGeometry);
+    TVirtualMCApplication::Instance()->ConstructGeometry();
+    TG4StateManager::Instance()->SetNewState(kNotInApplication);
+
+    // Set top volume and close Root geometry if not yet done
+    if ( ! gGeoManager->IsClosed() ) {
+      TGeoVolume *top = (TGeoVolume*)gGeoManager->GetListOfVolumes()->First();
+      gGeoManager->SetTopVolume(top);
+      gGeoManager->CloseGeometry();
+    }
+
+    // Now that we have the ideal geometry, call application misalignment code
+    TG4StateManager::Instance()->SetNewState(kMisalignGeometry);
+    TVirtualMCApplication::Instance()->MisalignGeometry();
+    TG4StateManager::Instance()->SetNewState(kNotInApplication);
+
     // Pass geometry to G4Root navigator
     rootNavMgr = TG4RootNavMgr::GetInstance(gGeoManager);
   }
@@ -393,6 +416,9 @@ void TG4RunManager::Initialize()
     G4cout << "TG4RunManager::Initialize done " << this << G4endl;
 }
 
+
+
+
 //_____________________________________________________________________________
 void TG4RunManager::LateInitialize()
 {
@@ -451,6 +477,8 @@ void TG4RunManager::LateInitialize()
     G4cout << "TG4RunManager::LateInitialize done " << this << G4endl;
 }
 
+
+
 //_____________________________________________________________________________
 void TG4RunManager::CacheMCStack()
 {
@@ -472,6 +500,11 @@ void TG4RunManager::CacheMCStack()
   if ( GetEventAction() ) {
     GetEventAction()->SetMCStack(mcStack);
     TG4TrackingAction::Instance()->SetMCStack(mcStack);
+    // TODO This caches the TVirtualMCStack, however, the TGeoMCBranchArrayContainer
+    //      is strongly connected to it.
+    #ifdef USE_G4ROOT
+      TG4TrackingAction::Instance()->SetBranchArrayContainer(gMC->GetBranchArrayContainer());
+    #endif
     TG4TrackManager::Instance()->SetMCStack(mcStack);
 
     if ( TG4StackPopper::Instance() ) {
@@ -490,6 +523,7 @@ void TG4RunManager::ProcessEvent(G4int eventId)
   //TG4Globals::Warning(
     //"TG4RunManager", "ProcessEvent", "Not implemented.");
   // Replay what is done in GEANT4 BeamOn
+
   if(!fHasRunInitializationOneEvent) {
     TG4Globals::Warning(
       "TG4RunManager", "ProcessEvent", "runinit for GEANT4.");

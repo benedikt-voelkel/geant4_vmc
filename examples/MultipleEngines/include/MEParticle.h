@@ -1,5 +1,5 @@
-#ifndef Ex01_PARTICLE_H
-#define Ex01_PARTICLE_H
+#ifndef ME_PARTICLE_H
+#define ME_PARTICLE_H
 
 //------------------------------------------------
 // The Virtual Monte Carlo examples
@@ -10,51 +10,51 @@
 // Contact: root-vmc@cern.ch
 //-------------------------------------------------
 
-/// \file  CEParticle.h
-/// \brief Definition of the CEParticle class
+/// \file  MEParticle.h
+/// \brief Definition of the MEParticle class
 ///
 /// Geant4 ExampleN01 adapted to Virtual Monte Carlo
 ///
-/// \author I. Hrivnacova; IPN, Orsay
+/// \author B. Volkel; University Heidelberg
 
 #include <TObject.h>
 
 class TParticle;
 
-/// \ingroup E01
+/// \ingroup ME
 /// \brief Extended TParticle with pointers to mother and daughter
 /// particles
 ///
-/// \date 05/04/2002
-/// \author I. Hrivnacova; IPN, Orsay
+/// \date 10/12/2018
+/// \author B. Volkel; University Heidelberg
 
-class CEParticle : public TObject
+class MEParticle : public TObject
 {
   public:
-    CEParticle(Int_t id, TParticle* particle);
-    CEParticle(Int_t id, TParticle* particle, CEParticle* mother);
-    CEParticle();
-    virtual ~CEParticle();
+    MEParticle(Int_t id, TParticle* particle);
+    MEParticle(Int_t id, TParticle* particle, MEParticle* mother);
+    MEParticle();
+    virtual ~MEParticle();
 
     // methods
-    void SetMother(CEParticle* particle);
-    void AddDaughter(CEParticle* particle);
+    void SetMother(MEParticle* particle);
+    void AddDaughter(MEParticle* particle);
 
     // get methods
     Int_t         GetID() const;
     TParticle*    GetParticle() const;
-    CEParticle* GetMother() const;
+    MEParticle*   GetMother() const;
     Int_t         GetNofDaughters() const;
-    CEParticle* GetDaughter(Int_t i) const;
+    MEParticle*   GetDaughter(Int_t i) const;
 
   private:
     // data members
     Int_t         fID;        ///< The particle Id
     TParticle*    fParticle;  ///< The particle definition
-    CEParticle* fMother;    ///< The particle mother
+    MEParticle*   fMother;    ///< The particle mother
     TObjArray*    fDaughters; ///< The particle daughters
 
-    ClassDef(CEParticle,1) // Extended TParticle
+    ClassDef(MEParticle,1) // Extended TParticle
 };
 
-#endif //Ex01_PARTICLE_H
+#endif // ME_PARTICLE_H

@@ -27,7 +27,7 @@ if (VMC_WITH_Geant4 AND VMC_WITH_Geant3)
 endif()
 
 # Geant4
-if(VMC_WITH_Geant4 OR REQUIRED_BY_CONCURRENT)
+if(VMC_WITH_Geant4 OR REQUIRED_BY_MULTI)
   # External G4Root (if required)
   if (Geant4VMC_USE_EXTERN_G4Root)
       find_package(G4Root REQUIRED)
@@ -69,7 +69,7 @@ if(VMC_WITH_Geant4 OR REQUIRED_BY_CONCURRENT)
 endif()
 
 # Geant3
-if(VMC_WITH_Geant3 OR REQUIRED_BY_CONCURRENT)
+if(VMC_WITH_Geant3 OR REQUIRED_BY_MULTI)
   find_package(Geant3 REQUIRED)
   #PYTHIA6
   find_package(Pythia6 REQUIRED)

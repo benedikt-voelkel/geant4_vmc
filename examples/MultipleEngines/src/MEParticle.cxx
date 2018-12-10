@@ -7,25 +7,25 @@
 // Contact: root-vmc@cern.ch
 //-------------------------------------------------
 
-/// \file CEParticle.cxx
-/// \brief Implementation of the CEParticle class
+/// \file MEParticle.cxx
+/// \brief Implementation of the MEParticle class
 ///
 /// Geant4 ExampleN01 adapted to Virtual Monte Carlo
 ///
-/// \date 05/04/2002
-/// \author I. Hrivnacova; IPN, Orsay
+/// \date 10/12/2018
+/// \author B. Volkel; University Heidelberg
 
-#include "CEParticle.h"
+#include "MEParticle.h"
 
 #include <TParticle.h>
 #include <TObjArray.h>
 
 /// \cond CLASSIMP
-ClassImp(CEParticle)
+ClassImp(MEParticle)
 /// \endcond
 
 //_____________________________________________________________________________
-CEParticle::CEParticle(Int_t id, TParticle* particle)
+MEParticle::MEParticle(Int_t id, TParticle* particle)
   : fID(id),
     fParticle(particle),
     fMother(0),
@@ -37,7 +37,7 @@ CEParticle::CEParticle(Int_t id, TParticle* particle)
 }
 
 //_____________________________________________________________________________
-CEParticle::CEParticle(Int_t id, TParticle* particle, CEParticle* mother)
+MEParticle::MEParticle(Int_t id, TParticle* particle, MEParticle* mother)
   : fID(id),
     fParticle(particle),
     fMother(mother),
@@ -50,7 +50,7 @@ CEParticle::CEParticle(Int_t id, TParticle* particle, CEParticle* mother)
 }
 
 //_____________________________________________________________________________
-CEParticle::CEParticle()
+MEParticle::MEParticle()
   : fID(0),
     fParticle(0),
     fMother(0),
@@ -60,7 +60,7 @@ CEParticle::CEParticle()
 }
 
 //_____________________________________________________________________________
-CEParticle::~CEParticle()
+MEParticle::~MEParticle()
 {
 /// Destructor
 
@@ -72,7 +72,7 @@ CEParticle::~CEParticle()
 // public methods
 
 //_____________________________________________________________________________
-void CEParticle::AddDaughter(CEParticle* particle)
+void MEParticle::AddDaughter(MEParticle* particle)
 {
 /// Add particles daughter
 /// \param particle  The daughter particle
@@ -83,7 +83,7 @@ void CEParticle::AddDaughter(CEParticle* particle)
 }
 
 //_____________________________________________________________________________
-void CEParticle::SetMother(CEParticle* particle)
+void MEParticle::SetMother(MEParticle* particle)
 {
 /// Set particle mother
 /// \param  particle  The mother particle
@@ -92,7 +92,7 @@ void CEParticle::SetMother(CEParticle* particle)
 }
 
 //_____________________________________________________________________________
-Int_t  CEParticle:: GetID() const
+Int_t  MEParticle:: GetID() const
 {
 /// \return The particle Id.
 
@@ -101,7 +101,7 @@ Int_t  CEParticle:: GetID() const
 
 
 //_____________________________________________________________________________
-TParticle*  CEParticle::GetParticle() const
+TParticle*  MEParticle::GetParticle() const
 {
 /// \return The particle definition (TParticle).
 
@@ -109,7 +109,7 @@ TParticle*  CEParticle::GetParticle() const
 }
 
 //_____________________________________________________________________________
-CEParticle* CEParticle::GetMother() const
+MEParticle* MEParticle::GetMother() const
 {
 /// \return The particle mother.
 
@@ -117,7 +117,7 @@ CEParticle* CEParticle::GetMother() const
 }
 
 //_____________________________________________________________________________
-Int_t CEParticle::GetNofDaughters() const
+Int_t MEParticle::GetNofDaughters() const
 {
 /// \return The number of daughters.
 
@@ -127,12 +127,12 @@ Int_t CEParticle::GetNofDaughters() const
 }
 
 //_____________________________________________________________________________
-CEParticle* CEParticle::GetDaughter(Int_t i) const
+MEParticle* MEParticle::GetDaughter(Int_t i) const
 {
 /// \return   \em i -th daughter
 /// \param i  The daughter index
 
   // add test if i
 
-  return (CEParticle*) fDaughters->At(i);
+  return (MEParticle*) fDaughters->At(i);
 }

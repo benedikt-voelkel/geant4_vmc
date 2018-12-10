@@ -230,23 +230,23 @@ inline void TGeant4::TrackPosition(TLorentzVector& position) const
 }
 
 //_____________________________________________________________________________
-inline void TGeant4::TrackPosition(Double_t& x, Double_t& y, Double_t& z, Double_t& t) const
+inline void TGeant4::TrackPosition(Double_t& x, Double_t& y, Double_t& z) const
 {
 /// The current particle position (in the world reference frame)
 /// and the local time since the current track is created
 /// (position of the PostStepPoint).
 
-  fStepManager->TrackPosition(x, y, z, t);
+  fStepManager->TrackPosition(x, y, z);
 }
 
 //_____________________________________________________________________________
-inline void TGeant4::TrackPosition(Float_t& x, Float_t& y, Float_t& z, Float_t& t) const
+inline void TGeant4::TrackPosition(Float_t& x, Float_t& y, Float_t& z) const
 {
 /// The current particle position (in the world reference frame)
 /// and the local time since the current track is created
 /// (position of the PostStepPoint) as float.
 
-  fStepManager->TrackPosition(x, y, z, t);
+  fStepManager->TrackPosition(x, y, z);
 }
 
 //_____________________________________________________________________________

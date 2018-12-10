@@ -75,12 +75,14 @@ void TG4EventAction::BeginOfEventAction(const G4Event* event)
 {
 /// Called by G4 kernel at the beginning of event.
 
+
   // reset the tracks counters
   fTrackingAction->PrepareNewEvent();
-
   // fill primary particles in VMC stack if stack is empty
-  // \note \todo Ask explicitly for primaries
-  if ( fMCStack->GetNtrack() == 0 ) {
+  // NOTE Ask TG4TrackManager if it has popped tracks because the VMC stack
+  //      might be empty for that reason.
+  //if ( fMCStack->GetNtrack() == 0 ) {
+  if(!fTrackManager->HasPoppedFromVMCStack()) {
     if (VerboseLevel() > 0)
       G4cout << "Filling VMC stack with primaries" << G4endl;
 

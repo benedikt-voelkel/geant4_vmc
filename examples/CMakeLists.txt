@@ -15,32 +15,31 @@
 
 cmake_minimum_required(VERSION 2.6.4 FATAL_ERROR)
 
-# first unset VMC_CONCURRENT to keep it tidy for the first examples
-set(VMC_CONCURRENT)
+# Flag in case GEANT4_VMC multiple engines (ME) example should be built.
+set(VMC_MULTI)
 
 set(CMAKE_MODULE_PATH
     ${Geant4VMC_DIR}/Modules
     ${Geant3_DIR}/Modules
     ${CMAKE_MODULE_PATH})
 
-# Disabled examples except for ConcurrentEngines since they do not work with new developments yet
-#add_subdirectory(E01)
-#add_subdirectory(E02)
-#add_subdirectory(E03)
-#add_subdirectory(E06)
-#add_subdirectory(A01)
-#add_subdirectory(Gflash)
-#add_subdirectory(TR)
-add_subdirectory(ConcurrentEngines)
+add_subdirectory(E01)
+add_subdirectory(E02)
+add_subdirectory(E03)
+add_subdirectory(E06)
+add_subdirectory(A01)
+add_subdirectory(Gflash)
+add_subdirectory(TR)
+add_subdirectory(MultipleEngines)
 
 
 #----------------------------------------------------------------------------
 # Garfield example requires Garfield
 #
-#find_package(Garfield QUIET)
-#if(Garfield_FOUND)
-  #add_subdirectory(ExGarfield)
-#else()
-  #message(STATUS "VMC Examples: Garfield package not found. ")
-  #message(STATUS "ExGarfield example disabled")
-#endif()
+find_package(Garfield QUIET)
+if(Garfield_FOUND)
+  add_subdirectory(ExGarfield)
+else()
+  message(STATUS "VMC Examples: Garfield package not found. ")
+  message(STATUS "ExGarfield example disabled")
+endif()

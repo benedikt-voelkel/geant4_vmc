@@ -37,7 +37,7 @@ set(MC_LIBRARIES)
 include_directories(${ROOT_INCLUDE_DIRS})
 
 # Geant4
-if(VMC_WITH_Geant4 OR REQUIRED_BY_CONCURRENT)
+if(VMC_WITH_Geant4 OR REQUIRED_BY_MULTI)
   # Workaround for upstream bug: http://bugzilla-geant4.kek.jp/show_bug.cgi?id=1663
   #include(${Geant4_USE_FILE})
   include(UseGeant4)
@@ -74,13 +74,13 @@ if(VMC_WITH_Geant4 OR REQUIRED_BY_CONCURRENT)
 
   set(MC_LIBRARIES ${MC_LIBRARIES} ${Geant4_LIBRARIES})
   # Only add prefix and compiler flag for explicit Geant4 builds
-  if(NOT REQUIRED_BY_CONCURRENT)
+  if(NOT REQUIRED_BY_MULTI)
     set(MC_PREFIX "g4")
     add_definitions(-DUSE_GEANT4)
   endif()
-endif(VMC_WITH_Geant4 OR REQUIRED_BY_CONCURRENT)
+endif(VMC_WITH_Geant4 OR REQUIRED_BY_MULTI)
 
-if(VMC_WITH_Geant3 OR REQUIRED_BY_CONCURRENT)
+if(VMC_WITH_Geant3 OR REQUIRED_BY_MULTI)
   # always build outside Geant4VMC
   include_directories(${Geant3_INCLUDE_DIRS})
 
@@ -92,12 +92,12 @@ if(VMC_WITH_Geant3 OR REQUIRED_BY_CONCURRENT)
   endif(Pythia6_FOUND)
 
   # Only add prefix and compiler flag for explicit Geant3 builds
-  if(NOT REQUIRED_BY_CONCURRENT)
+  if(NOT REQUIRED_BY_MULTI)
     set(MC_PREFIX "g3")
     add_definitions(-DUSE_GEANT3)
   endif()
 
-endif(VMC_WITH_Geant3 OR REQUIRED_BY_CONCURRENT)
+endif(VMC_WITH_Geant3 OR REQUIRED_BY_MULTI)
 
 # MTRoot (optional)
 if (VMC_WITH_MTRoot)

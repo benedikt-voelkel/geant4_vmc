@@ -30,6 +30,9 @@
 #include <TVirtualMCApplication.h>
 #include <TVirtualMCStack.h>
 #include <TParticle.h>
+#ifdef USE_G4ROOT
+  #include "TGeoMCBranchArrayContainer.h"
+#endif
 
 // Moved after Root includes to avoid shadowed variables
 // generated from short units names
@@ -60,6 +63,9 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
 
   // Cache pointers to thread-local objects
   TVirtualMCStack* stack = gMC->GetStack();
+  #ifdef USE_G4ROOT
+    TGeoMCBranchArrayContainer* geoStateContainer = gMC->GetBranchArrayContainer();
+  #endif
   TG4ParticlesManager* particlesManager = TG4ParticlesManager::Instance();
   TG4TrackManager* trackManager = TG4TrackManager::Instance();
 
@@ -110,13 +116,29 @@ void TG4PrimaryGeneratorAction::TransformPrimaries(G4Event* event)
   // of the VMC stack namely that the ordering corresponds to the VMC track id
   // which does not need to be true. Again, popping the first primary does not imply it
   // has to have ID = 0 (or 1).
-  while((particle = stack->PopNextTrack(particleId, geoStateIndex))) {
+  while((particle = stack->PopNextTrack(particleId))) {
     // only particles that didn't die (decay) in primary generator
     // will be transformed to G4 objects
 
-    // Pass this particle Id (in the VMC stack) to Track manager
-    trackManager->NotifyOnNewVMCTrack(particleId, geoStateIndex);
-    //G4cout << "Add track with ID " << particleId << " to GEANT4 stack" << G4endl;
+    // If there is a cached geometry state aka TGeoBranchArray it needs to be
+    // extracted here. This cannot be done in
+    // TG4TrackingAction::PreUserTrackingAction since this is called from G4
+    // kernel AFTER the initial step has been computed. Hence, TG4RootNavigator
+    // needs to know now and associate G4Track ID with the correct
+    // TGeoBranchArray in TG4RootNavigator::LocateGlobalPointAndSetup
+    #ifdef USE_G4ROOT
+      geoStateIndex = stack->GetTrackGeoStateIndex(particleId);
+      //TGeoBranchArray* geoState = nullptr;
+      if(geoStateIndex > -1 && geoStateContainer) {
+        trackManager->NotifyOnNewVMCTrack(particleId, geoStateContainer->GetGeoState(geoStateIndex));
+      } else {
+        trackManager->AddPrimaryParticleId(particleId);
+      }
+      // Pass this particle Id (in the VMC stack) to Track manager
+    #else
+      trackManager->AddPrimaryParticleId(particleId);
+    #endif
+
     // Get particle definition from TG4ParticlesManager
     //
     G4ParticleDefinition* particleDefinition

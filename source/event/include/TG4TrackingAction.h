@@ -19,6 +19,10 @@
 #include "TG4TrackingActionMessenger.h"
 #include "TG4TrackSaveControl.h"
 
+#ifdef USE_G4ROOT
+  #include "TGeoMCBranchArrayContainer.h"
+#endif
+
 #include <G4UserTrackingAction.hh>
 
 class TG4TrackInformation;
@@ -68,6 +72,9 @@ class TG4TrackingAction : public G4UserTrackingAction,
     void SetNewVerboseLevel(G4int level);
     void SetNewVerboseTrackID(G4int trackID);
     void SetSpecialControls(TG4SpecialControlsV2* specialControls);
+#ifdef USE_G4ROOT
+    void SetBranchArrayContainer(TGeoMCBranchArrayContainer* branchArrayContainer);
+#endif
 
     // get methods
     G4int GetNewVerboseLevel() const;
@@ -128,6 +135,10 @@ class TG4TrackingAction : public G4UserTrackingAction,
 
     /// track ID for which the new verbose level is applied
     G4int   fNewVerboseTrackID;
+
+    #ifdef USE_G4ROOT
+      TGeoMCBranchArrayContainer* fBranchArrayContainer;
+    #endif
 };
 
 
@@ -157,5 +168,12 @@ inline void TG4TrackingAction::SetSpecialControls(TG4SpecialControlsV2* specialC
   /// Return special controls manager
   fSpecialControls = specialControls;
 }
+
+#ifdef USE_G4ROOT
+  inline void TG4TrackingAction::SetBranchArrayContainer(TGeoMCBranchArrayContainer* branchArrayContainer) {
+    /// Set  cached pointer to thread-local VMC stack
+    fBranchArrayContainer = branchArrayContainer;
+  }
+#endif
 
 #endif //TG4_TRACKING_ACTION_H

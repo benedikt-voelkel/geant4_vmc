@@ -7,17 +7,17 @@
 # Contact: root-vmc@cern.ch
 #-------------------------------------------------
 
-# CMake Configuration file for the VMC ConcurrentEngines example
-# B. Volkel, 07/08/2018
+# CMake Configuration file for the VMC MultipleEngines example
+# B. Volkel, 10/12/2018
 
 #----------------------------------------------------------------------------
 # Setup the project
 cmake_minimum_required(VERSION 2.6.4 FATAL_ERROR)
 
 #----------------------------------------------------------------------------
-# Project CE
+# Project ME
 #
-project(CE)
+project(ME)
 
 #----------------------------------------------------------------------------
 # Define unique names of libraries and executables based on project name
@@ -55,18 +55,30 @@ include_directories(
 ROOT_GENERATE_DICTIONARY(
   ${CMAKE_SHARED_LIBRARY_PREFIX}${library_name}
   no_rootmap
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/CEMCSingleApplication.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/CEMCMultiApplication.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/CEMCStack.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/CEParticle.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/MEMCSingleApplication.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/MEMCMultiApplication.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/MEMCSingleStack.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/MEMCMultiStack.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/MEParticle.h
   LINKDEF ${CMAKE_CURRENT_SOURCE_DIR}/include/${program_name}LinkDef.h)
 
 #----------------------------------------------------------------------------
 # Locate sources and headers for this project
 # NB: headers are included so they will show up in IDEs
 #
-file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cxx)
-file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.h)
+set(headers
+    ${PROJECT_SOURCE_DIR}/include/MEMCMultiApplication.h
+    ${PROJECT_SOURCE_DIR}/include/MEMCMultiStack.h
+    ${PROJECT_SOURCE_DIR}/include/MEMCSingleApplication.h
+    ${PROJECT_SOURCE_DIR}/include/MEMCSingleStack.h
+    ${PROJECT_SOURCE_DIR}/include/MEParticle.h)
+
+    set(headers
+        ${PROJECT_SOURCE_DIR}/src/MEMCMultiApplication.cxx
+        ${PROJECT_SOURCE_DIR}/src/MEMCMultiStack.cxx
+        ${PROJECT_SOURCE_DIR}/src/MEMCSingleApplication.cxx
+        ${PROJECT_SOURCE_DIR}/src/MEMCSingleStack.cxx
+        ${PROJECT_SOURCE_DIR}/src/MEParticle.cxx)
 
 #----------------------------------------------------------------------------
 # Add the example library
@@ -93,24 +105,24 @@ endif()
 # (for building MC dependent code)
 #
 #----------------------------------------------------------------------------
-# ConcurrentEngines example requires G3 and G4
+# MultipleEngines example requires G3 and G4
 # Check again for availability of both Geant3 and 4
 find_package(Geant4VMC QUIET)
 find_package(Geant3 QUIET)
-# If both is found including the flag 'VMC_CONCURRENT' (taken from command line)
-if(Geant4VMC_FOUND AND Geant3_FOUND AND VMC_CONCURRENT)
+# If both is found including the flag 'VMC_MULTI' (taken from command line)
+if(Geant4VMC_FOUND AND Geant3_FOUND AND VMC_MULTI)
   # Set internal flag, only done locally from this CMakeLists.txt
-  set(REQUIRED_BY_CONCURRENT ON)
-  message(STATUS "Both Geant3 and Geant4 were found, build ConcurrentEngines example")
-# Warn, in case both was found but flag 'VMC_CONCURRENT' was not set
+  set(REQUIRED_BY_MULTI ON)
+  message(STATUS "Both Geant3 and Geant4 were found, build MultipleEngines example")
+# Warn, in case both was found but flag 'VMC_MULTI' was not set
 elseif(Geant4VMC_FOUND AND Geant3_FOUND)
-  message(WARNING "Found Geant3 and Geant4. Use -DVMC_CONCURRENT=ON to enable ConcurrentEngines example")
+  message(WARNING "Found Geant3 and Geant4. Use -DVMC_MULTI=ON to enable MultipleEngines example")
   # Nothing else to be done, return.
   return()
 # Couldn't find both Geant3 and 4. Notify and return.
 else()
   message(STATUS "Could not find both Geant3 and Geant4.")
-  message(STATUS "ConcurrentEngines example disabled")
+  message(STATUS "MultipleEngines example disabled")
   return()
 endif()
 include(UseMC)
