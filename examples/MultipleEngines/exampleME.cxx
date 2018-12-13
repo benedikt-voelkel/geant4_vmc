@@ -184,7 +184,7 @@ TVirtualMC* setupGeant3()
 //------------------------------------------------------------------------------
 TVirtualMC* setupGeant4(int argc, char** argv)
 {
-  TG4RunConfiguration* runConfiguration = new TG4RunConfiguration("geomRoot");
+  TG4RunConfiguration* runConfiguration = new TG4RunConfiguration("geomRoot", "QGSP_FTFP_BERT+optical", "stepLimiter+specialCuts", true);
 
   // TGeant4
   TGeant4* geant4 = new TGeant4("TGeant4", "", runConfiguration, argc, argv);
@@ -341,7 +341,7 @@ int main(int argc, char** argv)
   parseArgs(argc, argv, nEvents, firstEngine, secondEngine);
 
   if(secondEngine.compare("") != 0) {
-    return runMulti(atoi(argv[1]), argv[2], argv[3], argc, argv);
+    return runMulti(nEvents, firstEngine.c_str(), secondEngine.c_str(), argc, argv);
   }
-  return runSingle(atoi(argv[1]), argv[2], argc, argv);
+  return runSingle(nEvents, firstEngine.c_str(), argc, argv);
 }
