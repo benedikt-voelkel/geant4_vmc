@@ -7,8 +7,8 @@
 // Contact: root-vmc@cern.ch
 //-------------------------------------------------
 
-/// \file TG4TrackManager.cxx 
-/// \brief Implementation of the TG4TrackManager class 
+/// \file TG4TrackManager.cxx
+/// \brief Implementation of the TG4TrackManager class
 ///
 /// \author I. Hrivnacova; IPN, Orsay
 
@@ -23,9 +23,15 @@
 #include "TG4G3Units.h"
 #include "TG4Globals.h"
 
+#ifdef USE_G4ROOT
+#include "TG4RootNavMgr.h"
+#include <TGeoBranchArray.h>
+#endif
+
 #include <TVirtualMC.h>
 #include <TVirtualMCApplication.h>
-#include <TVirtualMC.h>
+#include <TMCManagerStack.h>
+#include <TMCParticleStatus.h>
 
 #include <G4TrackVector.hh>
 #include <G4TrackingManager.hh>
@@ -34,15 +40,17 @@
 #include <G4PrimaryParticle.hh>
 #include <G4SystemOfUnits.hh>
 
+
 // static data members
 G4ThreadLocal TG4TrackManager* TG4TrackManager::fgInstance = 0;
 
 //_____________________________________________________________________________
-TG4TrackManager::TG4TrackManager()     
+TG4TrackManager::TG4TrackManager()
   : TG4Verbose("trackManager"),
-    fG4TrackingManager(0),   
+    fG4TrackingManager(0),
     fTrackSaveControl(kSaveInPreTrack),
     fMCStack(0),
+    fMCManagerStack(0),
     fStackPopper(0),
     fSaveDynamicCharge(false),
     fTrackCounter(0),
@@ -51,17 +59,22 @@ TG4TrackManager::TG4TrackManager()
 {
 /// Default constructor
 
-  if (fgInstance) { 
+  if (fgInstance) {
     TG4Globals::Exception(
-      "TG4TrackManager", "TG4TrackManager", 
+      "TG4TrackManager", "TG4TrackManager",
       "Cannot create two instances of singleton.");
   }
+
+#ifdef USE_G4ROOT
+  // TODO Make sure the TG4RootNavigator is instantiated at this point.
+  fRootNavMgr = TG4RootNavMgr::GetInstance();
+#endif
 
   fgInstance = this;
 }
 
 //_____________________________________________________________________________
-TG4TrackManager::~TG4TrackManager() 
+TG4TrackManager::~TG4TrackManager()
 {
 /// Destructor
 
@@ -81,6 +94,26 @@ void  TG4TrackManager::LateInitialize()
 }
 
 //_____________________________________________________________________________
+void  TG4TrackManager::PrepareNewEvent()
+{
+/// Prepare the track manager for a new event
+
+  ResetPrimaryParticleIds();
+  ResetParticlesStatus();
+#ifdef USE_G4ROOT
+  if(fRootNavMgr) {
+    fRootNavMgr->ResetGeoStates();
+    fRootNavMgr->SetG4TrackingManager(fG4TrackingManager);
+  }
+#endif
+  if(fTrackSaveControl != kDoNotSave) {
+    fTrackCounter = 0;
+  } else {
+    fTrackCounter = fMCStack->GetNtrack();
+  }
+}
+
+//_____________________________________________________________________________
 void  TG4TrackManager::AddPrimaryParticleId(G4int id)
 {
 /// Puts the given id in fPrimaryParticleIds.
@@ -88,10 +121,41 @@ void  TG4TrackManager::AddPrimaryParticleId(G4int id)
 /// with Ids in VMC stack.
 
   fPrimaryParticleIds.push_back(id);
-}  
+}
 
 //_____________________________________________________________________________
-G4int TG4TrackManager::SetTrackInformation(const G4Track* track, G4bool overWrite)
+void  TG4TrackManager::AddParticleStatus(const TMCParticleStatus* particleStatus)
+{
+/// Adds the given VMC track ID along with particle status info to the
+/// TG4TG4TrackManager
+  fPrimaryParticleIds.push_back(particleStatus->fId);
+  fParticlesStatus.push_back((TMCParticleStatus*)particleStatus);
+#ifdef USE_G4ROOT
+  // Now forward a potential valid geoemetry status associated to this track to
+  // nacvigator
+  if(fRootNavMgr && fMCManagerStack && particleStatus) {
+    fRootNavMgr->SaveGeometryStatus(fPrimaryParticleIds.size(),
+                                    fMCManagerStack->GetGeoState(particleStatus->fId));
+  }
+#endif
+}
+
+//_____________________________________________________________________________
+void  TG4TrackManager::NotifyOnRestoredGeometry(const G4Track* track)
+{
+/// Adds the given VMC track ID along with particle status info to the
+/// TG4TG4TrackManager
+  TG4TrackInformation* trackInfo = GetTrackInformation(track);
+  if(fMCManagerStack && trackInfo) {
+    Int_t vmcTrackId = trackInfo->GetTrackParticleID();
+    fMCManagerStack->NotifyOnRestoredGeometry(vmcTrackId);
+  }
+}
+
+
+//_____________________________________________________________________________
+TG4TrackInformation* TG4TrackManager::SetTrackInformation(const G4Track* track,
+                                                          G4bool overWrite)
 {
 /// Set track index in VMC stack to track information
 /// and return its value
@@ -101,18 +165,18 @@ G4int TG4TrackManager::SetTrackInformation(const G4Track* track, G4bool overWrit
     TG4Globals::Exception("TG4TrackManager", "SetParentToTrackInformation",
       "G4TrackingManager has not been set.");
     return 0;
-  }    
-#endif  
+  }
+#endif
 
   TG4TrackInformation* trackInfo = GetTrackInformation(track);
-    
+
   if ( ! trackInfo ) {
     // create track information and set it to G4Track
     // if it does not yet exist
     trackInfo = new TG4TrackInformation();
     fG4TrackingManager->SetUserTrackInformation(trackInfo);
         // the track information is deleted together with its
-        // G4Track object  
+        // G4Track object
   }
 
   // track index in the particles array
@@ -121,32 +185,49 @@ G4int TG4TrackManager::SetTrackInformation(const G4Track* track, G4bool overWrit
      // Do not reset particle ID if it is already set
     G4int trackID = track->GetTrackID();
     G4int parentID = track->GetParentID();
-    if ( parentID == 0 ) { 
+    if ( parentID == 0 ) {
       // in VMC track numbering starts from 0
-      // trackIndex = trackID-1; 
+      // trackIndex = trackID-1;
       trackIndex = fPrimaryParticleIds[trackID-1];
-    } 
-    else { 
+      G4int idsSize = fPrimaryParticleIds.size();
+      // Set the initial status e.g. in case the track was transported to the
+      // current point before by another engine
+      // NOTE Double check whether there is a valid status
+      if(trackID <= fParticlesStatus.size() &&
+         fParticlesStatus[trackID-1]) {
+        trackInfo->SetInitialTrackStatus(fParticlesStatus[trackID-1]);
+        trackInfo->SetParentParticleID(fParticlesStatus[trackID-1]->fParentId);
+      }
+    }
+    else {
       if ( fTrackSaveControl != kDoNotSave ) {
+        // NOTE The track has not been pushed to the VMC stack yet. However, the
+        //      assumption is made that this track will get the ID
+        //      fMCStack->GetNtrack() + 1 which makes the assumtption on the user
+        //      implementation of VMC stack.
+        //      If this was called from TG4TrackingAction::PreUserTrackingAction()
+        //      the VMC track ID in the corresponding TG4TG4TrackInformation will
+        //      be overwritten by TG4TrackManager::TrackToStack() giving it the
+        //      true VMC track ID.
         trackIndex = fMCStack->GetNtrack();
         if ( overWrite ) trackIndex--;
-      }  
-      else   
+      }
+      else
         trackIndex = fTrackCounter;
             // if secondaries are not stacked in VMC stack
             // use own counter for setting track index
     }
-    if ( VerboseLevel() > 1 ) 
+    if ( VerboseLevel() > 1 )
       G4cout << "TG4TrackManager::SetTrackInformation: setting " << trackIndex << G4endl;
-      
+
     trackInfo->SetTrackParticleID(trackIndex);
-  }  
+  }
 
   // set current track number
   // fMCStack->SetCurrentTrack(trackIndex);
   ++fTrackCounter;
-  
-  return trackIndex;
+
+  return trackInfo;
 }
 
 //_____________________________________________________________________________
@@ -160,16 +241,16 @@ void TG4TrackManager::SetParentToTrackInformation(const G4Track* track)
     TG4Globals::Exception("TG4TrackManager", "SetParentToTrackInformation",
       "G4TrackingManager has not been set.");
     return;
-  }    
-#endif  
+  }
+#endif
 
-  const G4TrackVector* secondaryTracks 
+  const G4TrackVector* secondaryTracks
     = fG4TrackingManager->GetSteppingManager()->GetSecondary();
 
   if ( ! secondaryTracks ) return;
-  
+
   for ( G4int i=fNofSavedSecondaries; i<G4int(secondaryTracks->size()); i++) {
-    G4Track* secondary = (*secondaryTracks)[i]; 
+    G4Track* secondary = (*secondaryTracks)[i];
 
     // get parent track index
     TG4TrackInformation* parentInfo = GetTrackInformation(track);
@@ -178,8 +259,8 @@ void TG4TrackManager::SetParentToTrackInformation(const G4Track* track)
       TG4Globals::Exception("TG4TrackManager", "SetParentToTrackInformation",
         "Parent track has no TG4TrackInformation set.");
       return;
-    }    
-#endif  
+    }
+#endif
     G4int parentParticleID = parentInfo->GetTrackParticleID();
 
     // get or create track information and set it to the G4Track
@@ -189,11 +270,11 @@ void TG4TrackManager::SetParentToTrackInformation(const G4Track* track)
       //G4cout << "TG4TrackManager::SetParentToTrackInformation: new trackInfo"
       //       << trackInfo << G4endl;
       // the track information is deleted together with its
-      // G4Track object  
-    }  
+      // G4Track object
+    }
     trackInfo->SetParentParticleID(parentParticleID);
     secondary->SetUserInformation(trackInfo);
-  }         
+  }
 }
 
 //_____________________________________________________________________________
@@ -204,14 +285,14 @@ void  TG4TrackManager::SetBackPDGLifetime(const G4Track* aTrack)
 
     TG4TrackInformation* trackInfo = GetTrackInformation(aTrack);
     if ( trackInfo->GetPDGLifetime() > 0.0 ) {
-    
+
       G4ParticleDefinition* particle
         = aTrack->GetDynamicParticle()->GetDefinition();
-      particle->SetPDGLifeTime(trackInfo->GetPDGLifetime()); 
-    }  
-}  
+      particle->SetPDGLifeTime(trackInfo->GetPDGLifetime());
+    }
+}
 
-#ifdef STACK_WITH_KEEP_FLAG  
+#ifdef STACK_WITH_KEEP_FLAG
 //_____________________________________________________________________________
 void TG4TrackManager::TrackToStack(const G4Track* track, G4bool overWrite)
 #else
@@ -225,78 +306,81 @@ void TG4TrackManager::TrackToStack(const G4Track* track, G4bool /*overWrite*/)
   if ( VerboseLevel() > 2 )
     G4cout << "TG4TrackManager::TrackToStack" << G4endl;
 
-  // parent particle index 
+  // parent particle index
   G4int parentID = track->GetParentID();
   G4int motherIndex;
-  if (parentID == 0) { 
-    motherIndex = -1; 
+  if (parentID == 0) {
+    motherIndex = -1;
   }
   else {
     motherIndex = GetTrackInformation(track)->GetParentParticleID();
   }
-     
+
   // PDG code
-  G4int pdg 
+  G4int pdg
     = TG4ParticlesManager::Instance()->GetPDGEncoding(track->GetDefinition());
 
-  // track kinematics  
+  // track kinematics
   G4ThreeVector momentum = track->GetMomentum();
-  momentum *= 1./(TG4G3Units::Energy()); 
-  
+  momentum *= 1./(TG4G3Units::Energy());
+
   G4double px = momentum.x();
   G4double py = momentum.y();
   G4double pz = momentum.z();
-  G4double e = track->GetTotalEnergy()/TG4G3Units::Energy();  
+  G4double e = track->GetTotalEnergy()/TG4G3Units::Energy();
 
-  G4ThreeVector position = track->GetPosition(); 
+  G4ThreeVector position = track->GetPosition();
   position *= 1./(TG4G3Units::Length());
   G4double vx = position.x();
   G4double vy = position.y();
   G4double vz = position.z();
   G4double t = track->GetGlobalTime()/TG4G3Units::Time();
-  
 
-  G4ThreeVector polarization = track->GetPolarization(); 
+
+  G4ThreeVector polarization = track->GetPolarization();
   G4double polX = polarization.x();
   G4double polY = polarization.y();
   G4double polZ = polarization.z();
 
   // production process
-  TMCProcess mcProcess;  
+  TMCProcess mcProcess;
   const G4VProcess* kpProcess = track->GetCreatorProcess();
   if (!kpProcess) {
     mcProcess = kPPrimary;
   }
-  else {  
+  else {
     mcProcess = TG4PhysicsManager::Instance()->GetMCProcess(kpProcess);
-    // distinguish kPDeltaRay from kPEnergyLoss  
+    // distinguish kPDeltaRay from kPEnergyLoss
     if (mcProcess == kPEnergyLoss) mcProcess = kPDeltaRay;
-  }  
-  
+  }
+
   G4double weight = track->GetWeight();
 
   G4int status = 0;
   if ( fSaveDynamicCharge ) {
     // Store the dynamic particle charge (which in case of ion may
-    // be different from PDG charge) as status as there is no other 
+    // be different from PDG charge) as status as there is no other
     // place where we can do it
-    status = G4int(track->GetDynamicParticle()->GetCharge()/eplus); 
-  }    
-  
+    status = G4int(track->GetDynamicParticle()->GetCharge()/eplus);
+  }
+
   G4int ntr;
-#ifdef STACK_WITH_KEEP_FLAG  
-  // create particle 
+#ifdef STACK_WITH_KEEP_FLAG
+  // create particle
   fMCStack
     ->PushTrack(0, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                 polX, polY, polZ, mcProcess, ntr, weight, status,
                 overWrite);
-        // Experimental code with flagging tracks in stack for overwrite; 
+        // Experimental code with flagging tracks in stack for overwrite;
         // not yet available in distribution
-#else              
+#else
   fMCStack
     ->PushTrack(0, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                 polX, polY, polZ, mcProcess, ntr, weight, status);
 #endif
+  // NOTE Explicitly set the VMC particle Id in the track info hence not relying
+  //      on a certain indexing on the user VMC stack
+  GetTrackInformation(track)->SetTrackParticleID(ntr);
 }
 
 //_____________________________________________________________________________
@@ -305,53 +389,53 @@ void TG4TrackManager::PrimaryToStack(const G4PrimaryVertex* vertex,
 {
 /// Add primary particle to VMC stack
 
-  // Mother particle index 
+  // Mother particle index
   G4int motherIndex = -1;
-     
+
   // PDG code
-  G4int pdg 
+  G4int pdg
     = TG4ParticlesManager::Instance()->GetPDGEncoding(particle->GetG4code());
 
-  // track kinematics  
-  G4ThreeVector momentum = particle->GetMomentum(); 
-  momentum *= 1./(TG4G3Units::Energy()); 
+  // track kinematics
+  G4ThreeVector momentum = particle->GetMomentum();
+  momentum *= 1./(TG4G3Units::Energy());
   G4double px = momentum.x();
   G4double py = momentum.y();
   G4double pz = momentum.z();
   G4double mass = particle->GetMass();
   G4double e = sqrt(momentum.mag()*momentum.mag() + mass*mass);
-  e /= (TG4G3Units::Energy()); 
+  e /= (TG4G3Units::Energy());
 
-  G4ThreeVector position = vertex->GetPosition(); 
+  G4ThreeVector position = vertex->GetPosition();
   position *= 1./(TG4G3Units::Length());
   G4double vx = position.x();
   G4double vy = position.y();
   G4double vz = position.z();
   G4double t = vertex->GetT0()/TG4G3Units::Time();;
 
-  G4ThreeVector polarization = particle->GetPolarization(); 
+  G4ThreeVector polarization = particle->GetPolarization();
   G4double polX = polarization.x();
   G4double polY = polarization.y();
   G4double polZ = polarization.z();
 
   // production process
-  TMCProcess mcProcess = kPPrimary; 
-  
+  TMCProcess mcProcess = kPPrimary;
+
   G4double weight = particle->GetWeight();
 
   G4int status = 1;
   if ( fSaveDynamicCharge ) {
     // Store the dynamic particle charge (which in case of ion may
-    // be different from PDG charge) as status as there is no other 
+    // be different from PDG charge) as status as there is no other
     // place where we can do it
-    status = G4int(particle->GetCharge()/eplus); 
-  }    
-  
+    status = G4int(particle->GetCharge()/eplus);
+  }
+
   G4int ntr;
-  // create particle 
+  // create particle
   fMCStack->PushTrack(1, motherIndex, pdg, px, py, pz, e, vx, vy, vz, t,
                       polX, polY, polZ, mcProcess, ntr, weight, status);
-}                   
+}
 
 
 //_____________________________________________________________________________
@@ -363,32 +447,32 @@ void TG4TrackManager::SaveSecondaries(const G4Track* track,
   if ( track->GetTrackID() != fCurrentTrackID ) {
     fCurrentTrackID = track->GetTrackID();
     fNofSavedSecondaries = 0;
-  }  
- 
-  // Store parent track Id 
+  }
+
+  // Store parent track Id
   SetParentToTrackInformation(track);
-  
+
   for ( G4int i=fNofSavedSecondaries; i<G4int(secondaries->size()); ++i) {
 
-    G4Track* secondary =  (*secondaries)[i];      
-          
-    //G4cout << i << "th secondary to be saved: " 
+    G4Track* secondary =  (*secondaries)[i];
+
+    //G4cout << i << "th secondary to be saved: "
     //       << secondary->GetDefinition()->GetParticleName()
     //       << G4endl;
-          
+
     if ( GetTrackInformation(secondary) &&
          GetTrackInformation(secondary)->IsUserTrack() ) return;
-  
+
     // Set track Id
     SetTrackInformation(secondary);
 
-    // Save track in stack 
+    // Save track in stack
     TrackToStack(secondary);
-                   
+
     // Notify a stack popper (if activated) about saving this secondary
     if ( fStackPopper ) fStackPopper->Notify();
-    ++fNofSavedSecondaries;  
-  }    
+    ++fNofSavedSecondaries;
+  }
 }
 
 //_____________________________________________________________________________
@@ -397,39 +481,47 @@ void TG4TrackManager::ResetPrimaryParticleIds()
 /// Clear the vector with the VMC stack primary particle Ids
 
   fPrimaryParticleIds.clear();
-}    
+}
+
+//_____________________________________________________________________________
+void TG4TrackManager::ResetParticlesStatus()
+{
+/// Clear the vector with the VMC stack primary particle Ids
+
+  fParticlesStatus.clear();
+}
 
 //_____________________________________________________________________________
 TG4TrackInformation* TG4TrackManager::GetTrackInformation(
                                            const G4Track* track) const
 {
 /// Return user track information.
- 
+
 #ifdef MCDEBUG
   G4VUserTrackInformation* trackInfo = track->GetUserInformation();
-  if (!trackInfo) return 0;  
+  if (!trackInfo) return 0;
 
   //TG4TrackInformation* tg4TrackInfo
   //  = dynamic_cast<TG4TrackInformation*>(trackInfo);
   TG4TrackInformation* tg4TrackInfo
     = static_cast<TG4TrackInformation*>(trackInfo);
-  if (!tg4TrackInfo) { 
+  if (!tg4TrackInfo) {
      TG4Globals::Exception(
-       "TG4TrackManager", "GetTrackInformation", 
+       "TG4TrackManager", "GetTrackInformation",
        "Unknown track information type");
   }
-  
+
   return tg4TrackInfo;
-#else  
+#else
   return (TG4TrackInformation*)track->GetUserInformation();
-#endif  
-}    
-  
+#endif
+}
+
 //_____________________________________________________________________________
 G4bool TG4TrackManager::IsUserTrack(const G4Track* track) const
 {
 /// Return true if the secondary track was defined by user
 
-  return  
+  return
    GetTrackInformation(track) != 0x0 && GetTrackInformation(track)->IsUserTrack();
 }

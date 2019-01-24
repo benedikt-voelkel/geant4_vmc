@@ -10,7 +10,7 @@
  *************************************************************************/
 
 /// \file TG4RootNavMgr.h
-/// \brief Definition of the TG4RootNavMgr class 
+/// \brief Definition of the TG4RootNavMgr class
 ///
 /// \author A. Gheata; CERN
 
@@ -27,6 +27,8 @@ class TGeoManager;
 class TG4RootNavigator;
 class TG4RootDetectorConstruction;
 class TVirtualUserPostDetConstruction;
+class TGeoBranchArray;
+class G4TrackingManager;
 
 /// \brief Manager class creating a G4Navigator based on a ROOT geometry.
 ///
@@ -42,18 +44,18 @@ protected:
    Bool_t                fConnected;  ///< Flags connection to G4
 
    TG4RootNavMgr();
-   TG4RootNavMgr(TGeoManager *geom, TG4RootDetectorConstruction *detConstruction=0);   
+   TG4RootNavMgr(TGeoManager *geom, TG4RootDetectorConstruction *detConstruction=0);
 
 private:
    static G4ThreadLocal TG4RootNavMgr *fRootNavMgr; ///< Static pointer to singleton
-   static TG4RootNavMgr *fgMasterInstance; 
+   static TG4RootNavMgr *fgMasterInstance;
 
 public:
    static TG4RootNavMgr *GetInstance(TGeoManager *geom=0);
    static TG4RootNavMgr *GetInstance(const TG4RootNavMgr& navMgr);
    static TG4RootNavMgr *GetMasterInstance();
    virtual ~TG4RootNavMgr();
-   
+
    Bool_t                ConnectToG4();
    void                  Initialize(TVirtualUserPostDetConstruction *sdinit=0, Int_t nthreads=1);
    void                  LocateGlobalPointAndSetup(Double_t *pt, Double_t *dir=0);
@@ -67,6 +69,17 @@ public:
    TG4RootNavigator     *GetNavigator() const {return fNavigator;}
                          /// Return the G4 geometry built based on ROOT one
    TG4RootDetectorConstruction *GetDetConstruction() const {return fDetConstruction;}
+
+   /// Forward current G4TrackingManager
+   void SetG4TrackingManager(G4TrackingManager* trackingManager);
+
+   /// Notify the TG4RootNavMgr and the therefore the TG4RootNavigator about
+   /// a geometry status aka TGeoBranchArray for a given track.
+   /// Wrapper around the TG4RootNavigator::SaveGeometryStatus(Int_t G4TrackId, Int_t geoStateIndex)
+   void SaveGeometryStatus(Int_t G4TrackId, const TGeoBranchArray* geoState);
+
+   /// Reset the geometry states
+   void ResetGeoStates();
 
    //ClassDef(TG4RootNavMgr,0)  // Class crreating a G4Navigator based on ROOT geometry
 };

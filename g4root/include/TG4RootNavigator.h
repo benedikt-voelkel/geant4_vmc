@@ -10,7 +10,7 @@
  *************************************************************************/
 
 /// \file TG4RootNavigator.h
-/// \brief Definition of the TG4RootNavigator class 
+/// \brief Definition of the TG4RootNavigator class
 ///
 /// \author A. Gheata; CERN
 
@@ -27,10 +27,12 @@ class TGeoManager;
 class TGeoNavigator;
 class TGeoNode;
 class TG4RootDetectorConstruction;
+class TGeoBranchArray;
+class G4TrackingManager;
 
 /// \brief GEANT4 navigator using directly a TGeo geometry.
 ///
-/// All navigation methods requred by G4 tracking are implemented by 
+/// All navigation methods requred by G4 tracking are implemented by
 /// this class by invoking the corresponding functionality of ROOT
 /// geometry modeler.
 ///
@@ -49,20 +51,23 @@ protected:
    G4ThreeVector         fSafetyOrig;      ///< Last computed safety origin
    G4double              fLastSafety;      ///< Last computed safety
    Int_t                 fNzeroSteps;      ///< Number of zero steps in ComputeStep
+   G4TrackingManager* fG4TrackingManager; ///< Store pointer to G4TrackingManager
+   std::vector<TGeoBranchArray*> fTrackGeoStates; ///< Mapping geometry state
+                                                        ///< to G4Track id
 private:
    G4VPhysicalVolume *SynchronizeHistory();
    TGeoNode          *SynchronizeGeoManager();
-      
+
 public:
    TG4RootNavigator();
    TG4RootNavigator(TG4RootDetectorConstruction *dc);
    virtual ~TG4RootNavigator();
 
    void              SetDetectorConstruction(TG4RootDetectorConstruction *dc);
-   
+
    /// Return the navigation history
    G4NavigationHistory *GetHistory() {return &fHistory;}
-   
+
    // Virtual methods for navigation
    virtual  G4double ComputeStep(const G4ThreeVector &pGlobalPoint,
                                 const G4ThreeVector &pDirection,
@@ -103,6 +108,18 @@ public:
     //   Normals are not available for replica volumes (returns valid= false)
     // These methods takes full care about how to calculate this normal,
     // but if the surfaces are not convex it will return valid=false.
+
+    /// Set current G4TrackingManager
+    void SetG4TrackingManager(G4TrackingManager* trackingManager);
+
+    /// Notify the TG4RootNvMgr and the therefore the TG4RootNavigator about
+    /// a geometry status which has been pushed to the TGeoNavigator passing
+    /// the index returned by the TGeoNavigator and the corresponging G4Track
+    /// object.
+    void SaveGeometryStatus(Int_t G4TrackId, const TGeoBranchArray* geoState);
+
+    /// Reset the geometry status vector
+    void ResetGeoStates();
 
 //   ClassDef(TG4RootNavigator,0)  // Class defining a G4Navigator based on ROOT geometry
 };

@@ -11,7 +11,7 @@
 //-------------------------------------------------
 
 /// \file TG4RunConfiguration.h
-/// \brief Definition of the TG4RunConfiguration class 
+/// \brief Definition of the TG4RunConfiguration class
 ///
 /// \author I. Hrivnacova; IPN Orsay
 
@@ -61,7 +61,7 @@ class G4UImessenger;
 ///
 /// The third argument activates the special processes in the TG4SpecialPhysicsList,
 /// which implement VMC features:
-/// - stepLimiter       - step limiter (default) 
+/// - stepLimiter       - step limiter (default)
 /// - specialCuts       - VMC cuts
 /// - specialControls   - VMC controls for activation/inactivation selected processes
 /// - stackPopper       - stackPopper process
@@ -70,7 +70,7 @@ class G4UImessenger;
 ///
 /// \author I. Hrivnacova; IPN, Orsay
 
-class TG4RunConfiguration 
+class TG4RunConfiguration
 {
   public:
     TG4RunConfiguration(const TString& userGeometry,
@@ -80,24 +80,32 @@ class TG4RunConfiguration
                         Bool_t mtApplication = true);
     virtual ~TG4RunConfiguration();
 
-    // methods 
+    // methods
     //
     virtual G4VUserDetectorConstruction*   CreateDetectorConstruction();
     virtual G4VUserPhysicsList*            CreatePhysicsList();
     virtual G4VUserPrimaryGeneratorAction* CreatePrimaryGenerator();
 
-    virtual G4UserRunAction*      CreateRunAction();  
-    virtual G4UserEventAction*    CreateEventAction(); 
+    virtual G4UserRunAction*      CreateRunAction();
+    virtual G4UserEventAction*    CreateEventAction();
     virtual TG4TrackingAction*    CreateTrackingAction();
     virtual TG4SteppingAction*    CreateSteppingAction();
-    virtual G4UserStackingAction* CreateStackingAction(); 
-    
+    virtual G4UserStackingAction* CreateStackingAction();
+
     virtual TG4VUserRegionConstruction*   CreateUserRegionConstruction();
     virtual TG4VUserPostDetConstruction*  CreateUserPostDetConstruction();
     virtual TG4VUserFastSimulation*       CreateUserFastSimulation();
 
     // set methods
     void  SetMTApplication(Bool_t mtApplication);
+    /// Disables internal dispatch to TVirtualMCApplication::ConstructGeometry()
+    /// and hence rely on geometry construction being trigeered from outside.
+    void  SetExternalGeometryConstruction(Bool_t value);
+    /// Disables internal dispatch to TVirtualMCApplication::GeneratePrimaries()
+    /// and tells the engine to not make any implicit assumptions on whether it's
+    /// a primary or a secondary. The track could have even been transported by
+    /// another engine to the current point.
+    void  SetExternalParticleGeneration(Bool_t value);
 
     // get methods
     TString  GetUserGeometry() const;
@@ -106,10 +114,15 @@ class TG4RunConfiguration
     Bool_t   IsSpecialControls() const;
     Bool_t   IsSpecialCuts() const;
     Bool_t   IsMTApplication() const;
+    Bool_t   UseExternalGeometryConstruction() const;
+    Bool_t   UseExternalParticleGeneration() const;
+
 
   protected:
     // data members
     TString        fUserGeometry;           ///< way of building geometry
+    Bool_t         fUseExternalGeometryConstruction; ///< Rely on geometry is built externally
+    Bool_t         fUseExternalParticleGeneration; ///< Rely on particles are pushed to stack externally
     TString        fPhysicsListSelection;   ///< physics list selection
     TString        fSpecialProcessSelection;///< special process selection
     Bool_t         fSpecialStacking;        ///< option for special stacking
@@ -133,7 +146,6 @@ class TG4RunConfiguration
 inline TString TG4RunConfiguration::GetPhysicsListSelection() const {
   /// Return physics list selection
   return fPhysicsListSelection;
-}  
+}
 
 #endif //TG4V_RUN_CONFIGURATION_H
-
